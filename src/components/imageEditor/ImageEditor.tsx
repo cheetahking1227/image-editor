@@ -1,5 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Box, IconButton, Paper, Toolbar } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  Paper,
+  Toolbar,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  SelectChangeEvent,
+  ListItemText,
+  ListItemIcon,
+} from "@mui/material";
 import {
   FolderOpen,
   Undo,
@@ -8,6 +20,14 @@ import {
   AddCircleOutline,
   Crop,
   Edit,
+  BorderColor,
+  HorizontalRule,
+  CropSquare,
+  CircleOutlined,
+  ArrowForward,
+  Timeline,
+  TextFields,
+  InsertPhoto,
   Check,
   Close,
   Loop,
@@ -15,6 +35,23 @@ import {
 } from "@mui/icons-material";
 import * as fabric from "fabric";
 import Cropper from "react-easy-crop";
+import {
+  drawPen,
+  drawRectangle,
+  drawEllipse,
+  initEvent,
+} from "../../utils";
+
+const annotations = [
+  { label: 'Pen', icon: <BorderColor /> },
+  { label: 'Line', icon: <HorizontalRule /> },
+  { label: 'Rectangle', icon: <CropSquare /> },
+  { label: 'Ellipse', icon: <CircleOutlined /> },
+  { label: 'Arrow', icon: <ArrowForward /> },
+  { label: 'Path', icon: <Timeline /> },
+  { label: 'Add Text', icon: <TextFields /> },
+  { label: 'Add Image', icon: <InsertPhoto /> },
+];
 
 const ImageEditor: React.FC = () => {
 
@@ -33,6 +70,9 @@ const ImageEditor: React.FC = () => {
   const [canvasWidth, setCanvasWidth] = useState<number>(1880);
   const [canvasHeight, setCanvasHeight] = useState<number>(800);
   const [isWorking, setIsWorking] = useState<boolean>(false);
+  const [annotation, setAnnotation] = useState<string>('Pen');
+
+  const selectedIcon = annotations.find((tool) => tool.label === annotation)?.icon;
 
   useEffect(() => {
     if (canvasRef.current && !fabricCanvasRef.current) {
@@ -63,11 +103,32 @@ const ImageEditor: React.FC = () => {
     setCanvasHeight(imageObj.height);
   }, [imageObj]);
 
+  useEffect(() => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    initEvent(canvas);
+    switch (annotation) {
+      case 'Pen':
+        drawPen(canvas);
+        break;
+      case 'Line':
+        break;
+      case 'Rectangle':
+        drawRectangle(canvas);
+        break;
+      case 'Ellipse':
+        drawEllipse(canvas);
+        break;
+      default:
+        break;
+    }
+  }, [annotation]);
+
   const handleFileOpen = () => {
     fileInputRef.current?.click();
   };
 
-  const getCroppedImg = (imageSrc: string, pixelCrop: any): Promise<string>  => {
+  const getCroppedImg = (imageSrc: string, pixelCrop: any): Promise<string> => {
     return new Promise((resolve, reject) => {
       const image = new Image();
       image.src = imageSrc;
@@ -96,18 +157,18 @@ const ImageEditor: React.FC = () => {
       };
       image.onerror = reject;
     });
-}
+  }
 
   const showCroppedImage = async () => {
-  try {
-    setIsWorking(false);
-    const croppedImg = await getCroppedImg(completedImage!, croppedAreaPixels);
-    setImageUrl(croppedImg); // This triggers image reload and canvas redraw
-    setViewMode(1); // Back to main canvas view
-  } catch (e) {
-    console.error(e);
-  }
-};
+    try {
+      setIsWorking(false);
+      const croppedImg = await getCroppedImg(completedImage!, croppedAreaPixels);
+      setImageUrl(croppedImg); // This triggers image reload and canvas redraw
+      setViewMode(1); // Back to main canvas view
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleCrop = () => {
     if (fabricCanvasRef.current) {
@@ -140,6 +201,10 @@ const ImageEditor: React.FC = () => {
     }
   };
 
+  const handleAnnotationChange = (event: SelectChangeEvent) => {
+    setAnnotation(event.target.value)
+  }
+
   const handlePenDraw = () => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
@@ -148,76 +213,76 @@ const ImageEditor: React.FC = () => {
 
     /////////////////////////////////////////////////////////////////////////////////
 
-  // let isDrawing = false;
-  // let ellipse: fabric.Ellipse | null = null;
-  // let startX = 0;
-  // let startY = 0;
+    // let isDrawing = false;
+    // let ellipse: fabric.Ellipse | null = null;
+    // let startX = 0;
+    // let startY = 0;
 
-  // fabric.FabricObject.prototype.transparentCorners = false;
-  // fabric.FabricObject.prototype.cornerColor = 'blue';
-  // fabric.FabricObject.prototype.cornerStyle = 'circle';
+    // fabric.FabricObject.prototype.transparentCorners = false;
+    // fabric.FabricObject.prototype.cornerColor = 'blue';
+    // fabric.FabricObject.prototype.cornerStyle = 'circle';
 
-  // canvas.on('mouse:down', (opt: any) => {
-  //   const pointer = canvas.getScenePoint(opt.e);
-  //   const target = canvas.findTarget(opt.e);
-  //   if (target) return; // Prevent drawing over existing object
+    // canvas.on('mouse:down', (opt: any) => {
+    //   const pointer = canvas.getScenePoint(opt.e);
+    //   const target = canvas.findTarget(opt.e);
+    //   if (target) return; // Prevent drawing over existing object
 
-  //   isDrawing = true;
-  //   startX = pointer.x;
-  //   startY = pointer.y;
+    //   isDrawing = true;
+    //   startX = pointer.x;
+    //   startY = pointer.y;
 
-  //   ellipse = new fabric.Ellipse({
-  //     left: startX,
-  //     top: startY,
-  //     rx: 1,
-  //     ry: 1,
-  //     originX: 'center',
-  //     originY: 'center',
-  //     fill: 'transparent',
-  //     stroke: 'lightgreen',
-  //     strokeWidth: 4,
-  //     selectable: false,
-  //     hasControls: false,
-  //     objectCaching: false,
-  //   });
+    //   ellipse = new fabric.Ellipse({
+    //     left: startX,
+    //     top: startY,
+    //     rx: 1,
+    //     ry: 1,
+    //     originX: 'center',
+    //     originY: 'center',
+    //     fill: 'transparent',
+    //     stroke: 'lightgreen',
+    //     strokeWidth: 4,
+    //     selectable: false,
+    //     hasControls: false,
+    //     objectCaching: false,
+    //   });
 
-  //   canvas.add(ellipse);
-  // });
+    //   canvas.add(ellipse);
+    // });
 
-  // canvas.on('mouse:move', (opt: any) => {
-  //   if (!isDrawing || !ellipse) return;
+    // canvas.on('mouse:move', (opt: any) => {
+    //   if (!isDrawing || !ellipse) return;
 
-  //   const pointer = canvas.getScenePoint(opt.e);
+    //   const pointer = canvas.getScenePoint(opt.e);
 
-  //   const rx = Math.abs(pointer.x - startX) / 2;
-  //   const ry = Math.abs(pointer.y - startY) / 2;
+    //   const rx = Math.abs(pointer.x - startX) / 2;
+    //   const ry = Math.abs(pointer.y - startY) / 2;
 
-  //   const centerX = (pointer.x + startX) / 2;
-  //   const centerY = (pointer.y + startY) / 2;
+    //   const centerX = (pointer.x + startX) / 2;
+    //   const centerY = (pointer.y + startY) / 2;
 
-  //   ellipse.set({
-  //     rx,
-  //     ry,
-  //     left: centerX,
-  //     top: centerY,
-  //   });
-  //   canvas.requestRenderAll();
-  // });
+    //   ellipse.set({
+    //     rx,
+    //     ry,
+    //     left: centerX,
+    //     top: centerY,
+    //   });
+    //   canvas.requestRenderAll();
+    // });
 
-  // canvas.on('mouse:up', () => {
-  //   if (ellipse) {
-  //     ellipse.set({
-  //       selectable: true,
-  //       hasControls: true,
-  //       hasRotatingPoint: true,
-  //     });
+    // canvas.on('mouse:up', () => {
+    //   if (ellipse) {
+    //     ellipse.set({
+    //       selectable: true,
+    //       hasControls: true,
+    //       hasRotatingPoint: true,
+    //     });
 
-  //     canvas.setActiveObject(ellipse);
-  //   }
+    //     canvas.setActiveObject(ellipse);
+    //   }
 
-  //   isDrawing = false;
-  //   ellipse = null;
-  // });
+    //   isDrawing = false;
+    //   ellipse = null;
+    // });
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -226,7 +291,6 @@ const ImageEditor: React.FC = () => {
     let startX = 0;
     let startY = 0;
 
-    // Optional: Default selection style
     fabric.FabricObject.prototype.transparentCorners = false;
     fabric.FabricObject.prototype.cornerColor = 'blue';
     fabric.FabricObject.prototype.cornerStyle = 'circle';
@@ -301,15 +365,39 @@ const ImageEditor: React.FC = () => {
         <IconButton><AddCircleOutline /></IconButton> */}
         <Box flexGrow={1} />
         <IconButton onClick={handleCrop}><Crop /></IconButton>
-        <IconButton onClick={handlePenDraw}><Edit /></IconButton>
+        <FormControl sx={{ m: 1, minWidth: 60 }} size="small">
+          <Select
+            labelId="demo-simple-select-standard-label"
+            id="demo-simple-select-standard"
+            displayEmpty
+            value={annotation}
+            onChange={handleAnnotationChange}
+            renderValue={() => (
+              <Box display="flex" alignItems="center">
+                {selectedIcon}
+              </Box>
+            )}
+          >
+            {annotations.map((item) => (
+              <MenuItem key={item.label} value={item.label}>
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText>{item.label}</ListItemText>
+              </MenuItem>
+            ))}
+            {/* <MenuItem value={'Pen'}><Edit /> Pen</MenuItem>
+            <MenuItem value={'Line'}>Line</MenuItem>
+            <MenuItem value={'Rectangle'}><Crop54 /> Rectangle</MenuItem>
+            <MenuItem value={'Ellipse'}><CircleOutlined /> Ellipse</MenuItem> */}
+          </Select>
+        </FormControl>
         <Box flexGrow={1} />
         {
           isWorking
-          ? ( <>
+            ? (<>
               <IconButton onClick={showCroppedImage}><Check /></IconButton>
               <IconButton onClick={cancelCrop}><Close /></IconButton>
             </>)
-          : (<></>)
+            : (<></>)
         }
         {/* <IconButton><Loop /></IconButton> */}
         <IconButton><Save /></IconButton>
@@ -326,7 +414,7 @@ const ImageEditor: React.FC = () => {
 
       {/* Canvas Preview Area */}
 
-      <div style={{width:1880, height:800}}>
+      <div style={{ width: 1880, height: 800 }}>
         {
           // imageObj !== null
           viewMode === 1
