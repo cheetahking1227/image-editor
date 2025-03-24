@@ -6,7 +6,10 @@ import {
   Redo,
   RemoveCircleOutline,
   AddCircleOutline,
+  Crop,
   Edit,
+  Check,
+  Close,
   Loop,
   Save,
 } from "@mui/icons-material";
@@ -27,8 +30,9 @@ const ImageEditor: React.FC = () => {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [cropSize, setCropSize] = useState({ width: 400, height: 300 });
-  const [canvasWidth, setCanvasWidth] = useState<number>(0);
-  const [canvasHeight, setCanvasHeight] = useState<number>(0);
+  const [canvasWidth, setCanvasWidth] = useState<number>(1880);
+  const [canvasHeight, setCanvasHeight] = useState<number>(800);
+  const [isWorking, setIsWorking] = useState<boolean>(false);
 
   useEffect(() => {
     if (canvasRef.current && !fabricCanvasRef.current) {
@@ -50,11 +54,13 @@ const ImageEditor: React.FC = () => {
   useEffect(() => {
     if (!imageObj || !fabricCanvasRef.current) return;
 
-    setCanvasWidth(imageObj.width);
-    setCanvasHeight(imageObj.height);
+    fabricCanvasRef.current.setWidth(imageObj.width);
+    fabricCanvasRef.current.setHeight(imageObj.height);
     const fabricImage = new fabric.FabricImage(imageObj)
     fabricCanvasRef.current.backgroundImage = fabricImage;
     fabricCanvasRef.current.renderAll()
+    setCanvasWidth(imageObj.width);
+    setCanvasHeight(imageObj.height);
   }, [imageObj]);
 
   const handleFileOpen = () => {
@@ -62,38 +68,39 @@ const ImageEditor: React.FC = () => {
   };
 
   const getCroppedImg = (imageSrc: string, pixelCrop: any): Promise<string>  => {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.src = imageSrc;
-    image.crossOrigin = 'anonymous';
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = pixelCrop.width;
-      canvas.height = pixelCrop.height;
-      const ctx = canvas.getContext("2d");
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.src = imageSrc;
+      image.crossOrigin = 'anonymous';
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = pixelCrop.width;
+        canvas.height = pixelCrop.height;
+        const ctx = canvas.getContext("2d");
 
-      if (!ctx) return reject("No 2D context");
+        if (!ctx) return reject("No 2D context");
 
-      ctx.drawImage(
-        image,
-        pixelCrop.x,
-        pixelCrop.y,
-        pixelCrop.width,
-        pixelCrop.height,
-        0,
-        0,
-        pixelCrop.width,
-        pixelCrop.height
-      );
+        ctx.drawImage(
+          image,
+          pixelCrop.x,
+          pixelCrop.y,
+          pixelCrop.width,
+          pixelCrop.height,
+          0,
+          0,
+          pixelCrop.width,
+          pixelCrop.height
+        );
 
-      resolve(canvas.toDataURL("image/jpeg"));
-    };
-    image.onerror = reject;
-  });
+        resolve(canvas.toDataURL("image/jpeg"));
+      };
+      image.onerror = reject;
+    });
 }
 
   const showCroppedImage = async () => {
   try {
+    setIsWorking(false);
     const croppedImg = await getCroppedImg(completedImage!, croppedAreaPixels);
     setImageUrl(croppedImg); // This triggers image reload and canvas redraw
     setViewMode(1); // Back to main canvas view
@@ -104,20 +111,26 @@ const ImageEditor: React.FC = () => {
 
   const handleCrop = () => {
     if (fabricCanvasRef.current) {
+      setIsWorking(true);
       if (viewMode === 1) {
         const dataURL = fabricCanvasRef.current.toDataURL();
         fabricCanvasRef.current.dispose();
         fabricCanvasRef.current = null;
-        setCompletedImage(dataURL)
-        setViewMode(2)
+        setCompletedImage(dataURL);
+        setViewMode(2);
       } else {
-        // const dataURL = fabricCanvasRef.current.toDataURL();
-        // setCompletedImage(dataURL)
-        // setViewMode(2)
-        showCroppedImage();
+        // showCroppedImage();
       }
     }
   }
+
+  const cancelCrop = () => {
+    setIsWorking(false);
+    if (completedImage) {
+      setImageUrl(completedImage); // reload canvas with previous image
+      setViewMode(1);
+    }
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -282,15 +295,23 @@ const ImageEditor: React.FC = () => {
       {/* Top Toolbar */}
       <Toolbar variant="dense" sx={{ bgcolor: "#f5f5f5" }}>
         <IconButton onClick={handleFileOpen}><FolderOpen /></IconButton>
-        <IconButton onClick={handleCrop}>crop</IconButton>
-        <IconButton><Undo /></IconButton>
+        {/* <IconButton><Undo /></IconButton>
         <IconButton><Redo /></IconButton>
         <IconButton><RemoveCircleOutline /></IconButton>
-        <IconButton><AddCircleOutline /></IconButton>
+        <IconButton><AddCircleOutline /></IconButton> */}
         <Box flexGrow={1} />
+        <IconButton onClick={handleCrop}><Crop /></IconButton>
         <IconButton onClick={handlePenDraw}><Edit /></IconButton>
         <Box flexGrow={1} />
-        <IconButton><Loop /></IconButton>
+        {
+          isWorking
+          ? ( <>
+              <IconButton onClick={showCroppedImage}><Check /></IconButton>
+              <IconButton onClick={cancelCrop}><Close /></IconButton>
+            </>)
+          : (<></>)
+        }
+        {/* <IconButton><Loop /></IconButton> */}
         <IconButton><Save /></IconButton>
 
         {/* Hidden File Input */}
@@ -305,69 +326,56 @@ const ImageEditor: React.FC = () => {
 
       {/* Canvas Preview Area */}
 
-      {viewMode === 1
-        ? <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          height="90vh"
-          bgcolor="#fff"
-        >
-          <canvas
-            ref={canvasRef}
-            width= {1865}
-            height= {800}
-            style={{
-              border: "1px solid #ccc",
-            }}
-          />
-        </Box>
-        : <Box
-          position="relative"
-          width="1865px"
-          height="800px"
-          bgcolor="#000"
-          border="2px solid #fff"
-        >
-          <Cropper
-            image={completedImage}
-            crop={crop}
-            zoom={zoom}
-            aspect={undefined}
-            cropShape="rect"
-            cropSize={{ width: 400, height: 300 }}
-            showGrid={true}
-            restrictPosition={true}
-            minZoom={1}
-            maxZoom={3}
-            zoomSpeed={0.1}
-
-            onCropChange={setCrop}
-            onZoomChange={setZoom}
-            // onCropChange={(c) => setCrop(c)}
-            onCropComplete={(_, croppedPixels) => {
-              setCroppedAreaPixels(croppedPixels);
-            }}
-          />
-
-
-        <Box mt={2}>
-          <IconButton
-            onClick={showCroppedImage}
-            sx={{
-              color: "#fff",
-              border: "1px solid #fff",
-              px: 2,
-              py: 1,
-              borderRadius: 1,
-              fontSize: 16,
-            }}
-          >
-            Confirm Crop
-          </IconButton>
-        </Box>
-      </Box>
-          }
+      <div style={{width:1880, height:800}}>
+        {
+          // imageObj !== null
+          viewMode === 1
+            ? <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              height="90vh"
+              bgcolor="#fff"
+              sx={{ width: canvasWidth, height: canvasHeight, mx: 'auto', my: 'auto' }}
+            >
+              <canvas
+                ref={canvasRef}
+                // width={canvasWidth}
+                // height={canvasHeight}
+                style={{
+                  border: "1px solid #ccc",
+                }}
+              />
+            </Box>
+            : <Box
+              position="relative"
+              bgcolor="#fff"
+              border="2px solid #fff"
+              sx={{ width: canvasWidth, height: canvasHeight, mx: 'auto' }}
+            >
+              <Cropper
+                image={completedImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={undefined}
+                cropShape="rect"
+                cropSize={{ width: 400, height: 300 }}
+                showGrid={true}
+                restrictPosition={true}
+                minZoom={1}
+                maxZoom={3}
+                zoomSpeed={0.1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                // onCropChange={(c) => setCrop(c)}
+                onCropComplete={(_, croppedPixels) => {
+                  setCroppedAreaPixels(croppedPixels);
+                }}
+              />
+            </Box>
+          // : <></>
+        }
+      </div>
     </Paper>
   );
 };
