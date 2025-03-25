@@ -34,13 +34,16 @@ import {
   Save,
   Height,
 } from "@mui/icons-material";
-import * as fabric from "fabric";
+import { fabric } from "fabric";
 import Cropper from "react-easy-crop";
 import {
   drawPen,
+  drawLine,
   drawRectangle,
   drawEllipse,
+  drawPath,
   initEvent,
+  getCroppedImg,
 } from "../../utils";
 
 const annotations = [
@@ -61,13 +64,11 @@ const ImageEditor: React.FC = () => {
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
-  const linePoints: fabric.Point[] = [];
   const [viewMode, setViewMode] = useState<number>(1)
   const [completedImage, setCompletedImage] = useState<string>();
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-  const [cropSize, setCropSize] = useState({ width: 400, height: 300 });
   const [canvasWidth, setCanvasWidth] = useState<number>(1880);
   const [canvasHeight, setCanvasHeight] = useState<number>(800);
   const [isWorking, setIsWorking] = useState<boolean>(false);
@@ -117,7 +118,7 @@ const ImageEditor: React.FC = () => {
     setCanvasWidth(targetWidth);
     setCanvasHeight(targetHeight);
 
-    const fabricImage = new fabric.FabricImage(imageObj)
+    const fabricImage = new fabric.Image(imageObj)
     fabricImage.scaleToWidth(targetWidth);
     fabricImage.scaleToHeight(targetHeight);
     fabricCanvasRef.current.backgroundImage = fabricImage;
@@ -130,15 +131,19 @@ const ImageEditor: React.FC = () => {
     initEvent(canvas);
     switch (annotation) {
       case 'Pen':
-        drawPen(canvas);
+        // drawPen(canvas);
         break;
       case 'Line':
+        drawLine(canvas);
         break;
       case 'Rectangle':
         drawRectangle(canvas);
         break;
       case 'Ellipse':
         drawEllipse(canvas);
+        break;
+      case 'Path':
+        drawPath(canvas);
         break;
       default:
         break;
@@ -148,37 +153,6 @@ const ImageEditor: React.FC = () => {
   const handleFileOpen = () => {
     fileInputRef.current?.click();
   };
-
-  const getCroppedImg = (imageSrc: string, pixelCrop: any): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const image = new Image();
-      image.src = imageSrc;
-      image.crossOrigin = 'anonymous';
-      image.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = pixelCrop.width;
-        canvas.height = pixelCrop.height;
-        const ctx = canvas.getContext("2d");
-
-        if (!ctx) return reject("No 2D context");
-
-        ctx.drawImage(
-          image,
-          pixelCrop.x,
-          pixelCrop.y,
-          pixelCrop.width,
-          pixelCrop.height,
-          0,
-          0,
-          pixelCrop.width,
-          pixelCrop.height
-        );
-
-        resolve(canvas.toDataURL("image/jpeg"));
-      };
-      image.onerror = reject;
-    });
-  }
 
   const showCroppedImage = async () => {
     try {
@@ -333,7 +307,6 @@ const ImageEditor: React.FC = () => {
                   zoom={zoom}
                   aspect={undefined}
                   cropShape="rect"
-                  cropSize={{ width: 400, height: 300 }}
                   showGrid={true}
                   restrictPosition={true}
                   minZoom={1}
