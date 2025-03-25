@@ -28,7 +28,7 @@ export class AnnotationLine extends Polyline {
   // constructor(points: any[], options?: any);
 }
 
-export interface IAroomyLineControlOptions extends Control {
+export interface ICustomLineControlOptions extends Control {
   id?: string;
   pointIndex?: number;
   objectType?: string;

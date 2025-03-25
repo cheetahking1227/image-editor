@@ -1,32 +1,15 @@
 declare namespace fabric {
-  import { ItemType, WallType } from "./types";
-  import { AroomyLine, IAroomyLineControlOptions } from "fabric/fabric-impl";
+  import { CustomLine, ICustomLineControlOptions } from "fabric/fabric-impl";
 
   export interface Canvas {
     contextTop: CanvasRenderingContext2D;
     lowerCanvasEl: HTMLElement;
     wrapperEl: HTMLElement;
     isDragging: boolean;
-    historyProcessing: boolean;
-    _currentTransform: unknown;
     extraProps: any;
     lastPosX?: number;
     lastPosY?: number;
     isObjectDrawing?: boolean;
-    startDrawingSnapPointX?: number;
-    startDrawingSnapPointY?: number;
-    clearHistory(boolean?): void;
-    clearUndo(): void;
-    _historyNext(): void;
-    _historyInit(): void;
-    offHistory(): void;
-    onHistory(): void;
-    _centerObject: (obj: fabric.Object, center: fabric.Point) => fabric.Canvas;
-    _setupCurrentTransform(
-      e: Event,
-      target: fabric.Object,
-      alreadySelected: boolean
-    ): void;
   }
   export interface Object {
     extensionType?: string;
@@ -42,12 +25,6 @@ declare namespace fabric {
   export interface IObjectOptions {
     id?: string | undefined;
     name?: string | undefined;
-    depth?: number; // real height in three
-    wallType?: WallType;
-    type: ItemType;
-    elevation?: number;
-    bandPath?: string;
-    isRoom?: boolean;
   }
 
   export interface Group {
@@ -102,165 +79,35 @@ declare namespace fabric {
   export interface IGuideLineOptions extends ILineOptions {
     axis: "horizontal" | "vertical";
   }
-
-  export interface IGuideLineClassOptions extends IGuideLineOptions {
-    canvas: {
-      setActiveObject(
-        object: fabric.Object | fabric.GuideLine,
-        e?: Event
-      ): Canvas;
-      remove<T>(...object: (fabric.Object | fabric.GuideLine)[]): T;
-    } & Canvas;
-    activeOn: "down" | "up";
-    initialize(xy: number, objObjects: IGuideLineOptions): void;
-    callSuper(methodName: string, ...args: unknown[]): any;
-    getBoundingRect(absolute?: boolean, calculate?: boolean): Rect;
-    on(eventName: EventNameExt, handler: (e: IEvent<MouseEvent>) => void): void;
-    off(
-      eventName: EventNameExt,
-      handler?: (e: IEvent<MouseEvent>) => void
-    ): void;
-    fire<T>(eventName: EventNameExt, options?: any): T;
-    isPointOnRuler(e: MouseEvent): "horizontal" | "vertical" | false;
-    bringToFront(): fabric.Object;
-    isHorizontal(): boolean;
-  }
-
-  export interface GuideLine extends Line, IGuideLineClassOptions { }
-
-  export class GuideLine extends Line {
-    constructor(xy: number, objObjects?: IGuideLineOptions);
-    static fromObject(object: any, callback: any): void;
-  }
-
   export interface StaticCanvas {
     ruler: InstanceType<typeof CanvasRuler>;
   }
-  interface AroomyLine extends Polyline {
-    depth: number;
-    elevation: number;
+
+  interface CustomLine extends Polyline {
     isSelected: boolean;
-    isNotWall: boolean;
     isHovered: boolean;
     activeControlIndex?: number;
-    prevObject: fabric.AroomyLine;
-    allLineObjects: fabric.AroomyLine[] | fabric.AroomyPolyLine[] | undefined;
-    isSnappedLine: boolean;
-    convertPolygon(): void;
-    reCalcCoords(): void;
-    _setPositionDimensions({ }): void;
-    updateLine(): void;
-    handleSelected(): void;
-    handleDeselected(): void;
-    showDimension(value: boolean): void;
-    updateDimensionColor(color: string): void;
+    prevObject: fabric.CustomLine;
   }
-
-  interface AroomyDimension {
-    dimLine: fabric.Line;
-    leftMarker: fabric.Triangle;
-    rightMarker: fabric.Triangle;
-    dimText: fabric.Text;
-    dimTextField: fabric.Rect;
-    convertPolygon?: () => void;
-    prevObject?: fabric.AroomyLine;
-  }
-
-  interface AroomyCurve extends fabric.AroomyCurve {
-    activeControlIndex?: number;
-    isMiddleDim: boolean;
-    dimObjects: fabric.Object;
-    points: fabric.Point[];
-    elevation: number;
-    depth: number;
-    isNotWall: boolean;
-    _getPathFromPoints: (absPoints: fabric.Points[]) => any;
-    updateCurveFromAroomyItem(item: AroomyItem): void;
-    updateCurveFromPoints(newPointer: fabric.Point[]): void;
-  }
-  class AroomyLine extends Polyline {
+  class CustomLine extends Polyline {
     constructor(points: any[], options?: any);
-    parentPolygon: fabric.AroomyPolygon;
+    parentPolygon: fabric.CustomPolygon;
     dimObjects: fabric.Object;
     isSelected: boolean;
     reCalcCoords(): void;
-    _getAbsPoints(points: fabric.Point[]): fabric.Point[];
-    _getMidPoint(p0: fabric.Point, p1: fabric.Point): fabric.Point;
-    _setCoords();
     updatePoint(newPoints: fabric.Point[]): void;
-    updateLineFromAroomyItem(item: AroomyItem);
-    doSplit(curPoint: fabric.Point): void;
-    setActiveLine(): void;
-    setInActiveLine(): void;
-  }
-  interface IAroomyDoorWindowOptions extends IImageOptions {
-    isDoor?: boolean;
-    isWindow?: boolean;
-    parentObjectId?: string;
-    initPosition?: fabric.IPoint;
   }
 
-  interface AroomyDoorWindow extends Image {
-    id?: string;
-    elevation: number;
-    depth: number;
-    points: fabric.Point[];
-    doorWindowHeight: number,
-    doorWindowWidth: number,
-    doorWindowBottom: number,
-    __isDoor?: boolean;
-    __isWindow?: boolean;
-    __parentObjectID?: string;
-  }
-
-  export class AroomyDoorWindow extends Image {
-    __isDoor: boolean;
-    __isWindow: boolean;
-    __parentObjectId: string;
-    __isAdded: boolean;
-    __parentObject: any;
-
-    constructor(
-      element: string | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement,
-      options: IAroomyDoorWindowOptions
-    );
-
-    static fromObject(
-      object: any,
-      callback?: (obj: fabric.Object) => void,
-      extraParam?: any
-    ): fabric.Image;
-
-    toObject(): any;
-    registerEvents(): void;
-    dispose(): void;
-    addedEvent(): void;
-    parentModifiedEventHandler: () => void;
-    parentMoveEvent: () => void;
-    parentRemoveEvent(): void;
-    moveEvent(): void;
-    move: (point: fabric.Point) => void;
-
-    set isDoor(flag: boolean);
-    get isDoor(): boolean;
-
-    set isWindow(flag: boolean);
-    get isWindow(): boolean;
-
-    set parentObjectId(id: string);
-    get parentObjectId(): string;
-  }
-
-  interface IAroomyLineControlOptions extends Control {
+  interface ICustomLineControlOptions extends Control {
     id?: string;
     pointIndex?: number;
     objectType?: string;
   }
 
-  interface IAroomyPolygonControlOptions {
+  interface ICustomPolygonControlOptions {
     canvas: fabric.Canvas,
     point: IPoint,
-    parentPolygon: fabric.AroomyPolygon,
+    parentPolygon: fabric.CustomPolygon,
     index: number,
   }
 
@@ -294,15 +141,74 @@ declare namespace fabric {
     clearHistory: () => void;
     historyUndo: any[];
     historyRedo: any[];
-    tempHistory: { id: string | undefined, object: AroomyObject }[];
+    tempHistory: { id: string | undefined, object: CustomObject }[];
     isEnded: boolean;
     isLineOperated: boolean;
     oldVpt: any[];
-    aroomyUnit: string;
-    currentTool: AroomyDrawingToolType;
+    customUnit: string;
+    currentTool: CustomDrawingToolType;
     hasSplittedObjects: boolean;
     countClick: number = 0;
   };
+
+  export class CustomCircle extends fabric.Circle {
+    type?: string | undefined;
+    depth: number; a
+    elevation: number;
+    points: fabric.Point[];
+    dimObjects: {};
+    isNotWall: boolean;
+
+    initialize(options?: ICircleOptions);
+    updateCirclFromCenter(centerPoint: fabric.Point): void;
+    toObject();
+    fromObject(options: ICircleOptions): CustomCircle;
+  }
+  export class CustomPolygon extends fabric.Polygon {
+    type?: string | undefined;
+    lines: fabric.CustomPolyLine[];
+    elevation: number;
+    updatedPoints: fabric.Point[];
+    isSelected: boolean;
+    isLineSelected: boolean;
+    isRoom: boolean;
+    areaTextObj: fabric.Text;
+    isNotWall: boolean;
+    wallThickness: number;
+    customControls: any;
+    connectedPolygonInfo: any[];
+    isSnappedPoint: boolean;
+    prevPolygon: fabric.CustomPolygon | undefined;
+    prevConnectedPolygons: fabric.CustomPolygon[] | undefined;
+    modifiedConnectedPolygons: fabric.CustomPolygon[] | undefined;
+    lineOptions: any;
+
+    initialize?(
+      points: fabric.Point[],
+      options: IObjectOptions & { lineOptions?: IObjectOptions },
+    );
+    updatePolygon(): void;
+    splitEvent(delLine: fabric.CustomPolyLine, oriLine: fabric.CustomPolyLine, newLine: fabric.CustomPolyLine): void;
+    removeTwoLine(delLine0: fabric.CustomPolyLine, delLine1: fabric.CustomPolyLine, addLine: fabric.CustomPolyLine): void;
+    updatePolygonFromPoints(newPoints: fabric.Point[]): void;
+    updatePolygonFromCustomItem(item: CustomItem): void;
+    showHideControlsByLine(line: fabric.CustomPolyLine, isShow: boolean);
+    controlSnapEvent(point: fabric.Point, index: number): void;
+    toObject?();
+    fromObject?(options: IObjectOptions): CustomPolygon;
+  }
+
+  export class CustomPolyLine extends fabric.CustomLine {
+    type?: string | undefined;
+    parentPolygon: fabric.CustomPolygon;
+    parentId: string;
+    isSelected: boolean;
+    initialize(
+      points: fabric.Point[],
+      options: IObjectOptions & { lineOptions?: IObjectOptions }
+    );
+    fromObject(options: IObjectOptions): CustomLine;
+  }
   export interface CustomRect extends fabric.Rect {
     absPoint?: { start: fabric.Point; end: fabric.Point };
   }
@@ -318,36 +224,5 @@ declare namespace fabric {
     dimObjects?: {};
   }
 
-  export type AroomyObject = fabric.AroomyCurve | fabric.AroomyLine | fabric.AroomyPolyLine | fabric.AroomyCircle | fabric.AroomyDoorWindow | fabric.AroomyPolygon;
-  export type AroomyWallObject = fabric.AroomyCurve | fabric.AroomyLine | fabric.AroomyPolyLine | fabric.AroomyCircle | fabric.AroomyPolygon;
-
-  export type HistoryType = 'added' | 'modified' | 'removed' | 'line-connected' | 'line-splitted' | 'doorWindowAdded' | 'notWallModified' | 'doorFilpped';
-  export interface AroomyHistoryObject {
-    actionType: HistoryType;
-    current: AroomyObject | null;
-    prev: AroomyObject | null;
-  }
-
-  export type AroomyDimensionObject = fabric.AroomyCurve | fabric.AroomyLine | fabric.AroomyCircle | fabric.AroomyPolyLine;
-
-  export type HistoryType = 'added' | 'modified' | 'removed';
-  export interface AroomyHistoryObject {
-    actionType: HistoryType;
-    current: AroomyObject | null;
-    prev: AroomyObject | null;
-  }
-  interface FabricStoreState {
-    isSavingStatus: boolean;
-    setIsSavingStatus: (status: boolean) => void;
-    isNotWallNotification: boolean;
-    setIsNotWallNotification: (status: boolean) => void;
-  }
-  interface SettingStoreState {
-    selectedUnit: string;
-    setSelectedUnit: (unit: string) => void;
-    isColorView: boolean;
-    setIsColorView: (isColor: boolean) => void;
-  }
-
-  type AroomyCanvas = fabric.Canvas & fabric.extendCanvas;
+  type CustomCanvas = fabric.Canvas & fabric.extendCanvas;
 }
