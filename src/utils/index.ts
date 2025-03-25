@@ -35,13 +35,13 @@ export const drawLine = (canvas: fabric.Canvas) => {
 
   canvas.on('mouse:move', (opt: any) => {
     if (!isDrawing || !line) return;
-    console.log('draw line is called')
     const pointer = opt.absolutePointer;
     const linePoint = line.points;
     if (linePoint) {
       linePoint[1] = new fabric.Point(pointer.x, pointer.y);
       line.set({ points: linePoint });
       line.setCoords();
+      line._setPositionDimensions({});
       line.dirty = true;
     }
     canvas.renderAll();
@@ -215,6 +215,116 @@ export const drawEllipse = (canvas: fabric.Canvas) => {
 }
 
 export const drawArrow = (canvas: fabric.Canvas) => {
+  canvas.isDrawingMode = false;
+
+  let isDrawing = false;
+  let arrowLine: fabric.CustomLine | null = null;
+  let arrowHead: fabric.Triangle | null = null;
+  let arrowGroup: fabric.Group | null = null;
+  let startX = 0;
+  let startY = 0;
+
+  canvas.on('mouse:down', (opt: any) => {
+    const target = canvas.findTarget(opt.e, true);
+    if (target) return;
+
+    const pointer = canvas.getPointer(opt.e);
+    isDrawing = true;
+    startX = pointer.x;
+    startY = pointer.y;
+
+    // Create line
+    const linePoint = [new fabric.Point(startX, startY), new fabric.Point(startX, startY)];
+    arrowLine = new fabric.CustomLine(linePoint, {
+      stroke: 'white',
+      strokeWidth: 2,
+      selectable: false,
+      evented: false,
+    });
+
+    // Create arrowhead (triangle)
+    arrowHead = new fabric.Triangle({
+      width: 10,
+      height: 12,
+      fill: 'white',
+      left: startX,
+      top: startY,
+      originX: 'center',
+      originY: 'center',
+      angle: 0,
+      selectable: false,
+      evented: false,
+    });
+
+    // Group line and arrowhead
+    arrowGroup = new fabric.Group([arrowLine, arrowHead], {
+      left: 0,
+      top: 0,
+      selectable: false,
+      evented: true,
+      hasBorders: false,
+      hasControls: false,
+      objectCaching: false,
+    });
+
+    canvas.add(arrowGroup);
+  });
+
+  canvas.on('mouse:move', (opt: any) => {
+    if (!isDrawing || !arrowLine || !arrowHead || !arrowGroup) return;
+
+    const pointer = opt.absolutePointer;
+    const linePoint = arrowLine.points;
+    if (linePoint) {
+      linePoint[1] = new fabric.Point(pointer.x, pointer.y);
+      arrowLine.set({ points: linePoint });
+      arrowLine.setCoords();
+      arrowLine._setPositionDimensions({});
+      arrowLine.dirty = true;
+    }
+    // const pointer = opt.absolutePointer;
+    // const x2 = pointer.x;
+    // const y2 = pointer.y;
+
+    // Update line
+    // arrowLine.set({ x2, y2 });
+
+    // Calculate angle for triangle
+    const dx = pointer.x - startX;
+    const dy = pointer.y - startY;
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    // Update triangle position and rotation
+    arrowHead.set({
+      left: pointer.x,
+      top: pointer.y,
+      angle: angle + 90,
+    });
+
+    // Recalculate group bounds
+    // arrowGroup._calcBounds();
+    arrowGroup.setCoords();
+    console.log(`arrow group`, arrowGroup);
+    console.log(`line`, arrowLine)
+    canvas.renderAll();
+  });
+
+  canvas.on('mouse:up', () => {
+    if (arrowGroup) {
+      arrowGroup.set({
+        selectable: true,
+        evented: true,
+        hasControls: true,
+        hasBorders: true,
+      });
+      canvas.setActiveObject(arrowGroup);
+    }
+
+    isDrawing = false;
+    arrowLine = null;
+    arrowHead = null;
+    arrowGroup = null;
+  });
 
 }
 
@@ -247,7 +357,7 @@ export const drawPath = (canvas: fabric.Canvas) => {
         hasBorders: true,
         evented: true,
       });
-      canvas.setActiveObject(livePolyline);
+      // canvas.setActiveObject(livePolyline);
       livePolyline = null;
     }
 
@@ -284,7 +394,7 @@ export const drawPath = (canvas: fabric.Canvas) => {
     }
   });
 
-  canvas.on('mouse:move', (opt : any) => {
+  canvas.on('mouse:move', (opt: any) => {
     if (!isDrawing || points.length === 0) return;
 
     const pointer = canvas.getPointer(opt.e);
@@ -298,6 +408,7 @@ export const drawPath = (canvas: fabric.Canvas) => {
       selectable: false,
       evented: false,
     });
+    canvas.setActiveObject(previewLine);
 
     canvas.add(previewLine);
     canvas.requestRenderAll();
@@ -305,6 +416,63 @@ export const drawPath = (canvas: fabric.Canvas) => {
 
   const upperCanvasEl = (canvas as any).upperCanvasEl as HTMLCanvasElement;
   upperCanvasEl.addEventListener('dblclick', finishPolyline);
+}
+
+export const addText = (canvas: fabric.Canvas) => {
+  if (!canvas) return;
+
+  fabric.Object.prototype.transparentCorners = false;
+  fabric.Object.prototype.cornerColor = 'white';
+  fabric.Object.prototype.cornerStyle = 'circle';
+  fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
+  fabric.Object.prototype.cornerSize = 16;
+
+  const text = new fabric.IText('Double-click to edit me', {
+    left: 150,
+    top: 150,
+    fontSize: 24,
+    fill: '#FFF',
+    fontFamily: 'Arial',
+    editable: true,
+    selectable: true,
+  });
+
+  canvas.add(text);
+  canvas.setActiveObject(text);
+  canvas.renderAll();
+}
+
+export const addImage = (canvas: fabric.Canvas, event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  if (!file || !canvas) return;
+
+  fabric.Object.prototype.transparentCorners = false;
+  fabric.Object.prototype.cornerColor = 'white';
+  fabric.Object.prototype.cornerStyle = 'circle';
+  fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
+  fabric.Object.prototype.cornerSize = 16;
+
+  const reader = new FileReader();
+  reader.onload = function (f) {
+    const dataUrl = f.target?.result as string;
+
+    fabric.Image.fromURL(dataUrl, (img) => {
+      img.set({
+        left: 100,
+        top: 100,
+        scaleX: 0.5,
+        scaleY: 0.5,
+        selectable: true,
+        hasControls: true,
+      });
+
+      canvas!.add(img);
+      canvas!.setActiveObject(img);
+      canvas!.renderAll();
+    });
+  };
+
+  reader.readAsDataURL(file);
 }
 
 export const initEvent = (canvas: fabric.Canvas) => {

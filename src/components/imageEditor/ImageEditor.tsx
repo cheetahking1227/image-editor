@@ -33,7 +33,10 @@ import {
   drawLine,
   drawRectangle,
   drawEllipse,
+  drawArrow,
   drawPath,
+  addText,
+  addImage,
   initEvent,
   getCroppedImg,
 } from "../../utils";
@@ -52,6 +55,7 @@ const annotations = [
 const ImageEditor: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addImageInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -62,7 +66,7 @@ const ImageEditor: React.FC = () => {
   const [canvasWidth, setCanvasWidth] = useState<number>(1880);
   const [canvasHeight, setCanvasHeight] = useState<number>(800);
   const [isWorking, setIsWorking] = useState<boolean>(false);
-  const [annotation, setAnnotation] = useState<string>('Pen');
+  const [annotation, setAnnotation] = useState<string>('');
 
   const selectedIcon = annotations.find((tool) => tool.label === annotation)?.icon;
 
@@ -132,6 +136,9 @@ const ImageEditor: React.FC = () => {
       case 'Ellipse':
         drawEllipse(canvas);
         break;
+      case 'Arrow':
+        drawArrow(canvas);
+        break;
       case 'Path':
         drawPath(canvas);
         break;
@@ -186,6 +193,11 @@ const ImageEditor: React.FC = () => {
     }
   };
 
+  const handleImageAdd = (event: React.ChangeEvent<HTMLInputElement>) => {
+    addImage(fabricCanvasRef.current!, event);
+    event.target.value = '';
+  }
+
   const handleAnnotationChange = (event: SelectChangeEvent) => {
     setAnnotation(event.target.value)
   }
@@ -215,10 +227,20 @@ const ImageEditor: React.FC = () => {
             )}
           >
             {annotations.map((item) => (
-              <MenuItem key={item.label} value={item.label}>
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText>{item.label}</ListItemText>
-              </MenuItem>
+              item.label === 'Add Image'
+                ? <MenuItem key={item.label} value={item.label} onClick={() => { addImageInputRef.current?.click() }}>
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText>{item.label}</ListItemText>
+                </MenuItem>
+                : item.label === 'Add Text'
+                  ? <MenuItem key={item.label} value={item.label} onClick={() => { addText(fabricCanvasRef.current!) }}>
+                    <ListItemIcon>{item.icon}</ListItemIcon>
+                    <ListItemText>{item.label}</ListItemText>
+                  </MenuItem>
+                  : <MenuItem key={item.label} value={item.label}>
+                    <ListItemIcon>{item.icon}</ListItemIcon>
+                    <ListItemText>{item.label}</ListItemText>
+                  </MenuItem>
             ))}
             {/* <MenuItem value={'Pen'}><Edit /> Pen</MenuItem>
             <MenuItem value={'Line'}>Line</MenuItem>
@@ -242,6 +264,13 @@ const ImageEditor: React.FC = () => {
           accept="image/*"
           ref={fileInputRef}
           onChange={handleFileChange}
+          style={{ display: "none" }}
+        />
+        <input
+          type="file"
+          accept="image/*"
+          ref={addImageInputRef}
+          onChange={handleImageAdd}
           style={{ display: "none" }}
         />
       </Toolbar>
@@ -293,8 +322,6 @@ const ImageEditor: React.FC = () => {
               </Box>
             )}
           </Box>
-
-
           // : <></>
         }
       </div>

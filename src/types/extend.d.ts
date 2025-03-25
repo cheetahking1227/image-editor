@@ -88,6 +88,8 @@ declare namespace fabric {
     isHovered: boolean;
     activeControlIndex?: number;
     prevObject: fabric.CustomLine;
+    _getAbsPoints(points: fabric.Point[]): fabric.Point[];
+    _setPositionDimensions({ }): void;
   }
   class CustomLine extends Polyline {
     constructor(points: any[], options?: any);
@@ -96,6 +98,8 @@ declare namespace fabric {
     isSelected: boolean;
     reCalcCoords(): void;
     updatePoint(newPoints: fabric.Point[]): void;
+    _getAbsPoints(points: fabric.Point[]): fabric.Point[];
+    _setPositionDimensions({ }): void;
   }
 
   interface ICustomLineControlOptions extends Control {

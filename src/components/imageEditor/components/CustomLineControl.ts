@@ -132,12 +132,12 @@ export class CustomLineControl extends fabric.Control {
       polyline.points = [];
     }
 
-    let points = [...polyline.points];
+    let points = polyline._getAbsPoints(polyline.points);
     const pointer = new fabric.Point(finalPointPosition.x, finalPointPosition.y);
     points[this.pointIndex] = pointer;
     polyline.set({ points: points });
     polyline.dirty = true;
-    console.log(polyline.getBoundingRect());
+    polyline._setPositionDimensions({});
     polyline.setCoords();
     return true;
   };
