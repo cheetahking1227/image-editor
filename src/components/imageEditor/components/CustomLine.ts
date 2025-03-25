@@ -1,8 +1,8 @@
 import { fabric } from "fabric";
-import { AroomyLineControl } from "./AroomyLineControl";
+import { CustomLineControl } from "./CustomLineControl";
 
-fabric.AroomyLine = fabric.util.createClass(fabric.Polyline, {
-  type: "aroomyLine",
+fabric.CustomLine = fabric.util.createClass(fabric.Polyline, {
+  type: "customLine",
   name: "Line",
   dimObjects: {},
   isSelected: false,
@@ -29,11 +29,6 @@ fabric.AroomyLine = fabric.util.createClass(fabric.Polyline, {
   },
 
   _eventListner: function () {
-    // this.on("added", () => {});
-    // this.on("moving", () => {});
-    // this.on("mouseup", () => {});
-    // this.on("modified", () => {});
-    // this.on("removed", () => {});
   },
 
   initOptions: function () {
@@ -44,10 +39,6 @@ fabric.AroomyLine = fabric.util.createClass(fabric.Polyline, {
     return fabric.util.object.extend(this.callSuper("toObject"), {
       id: this.get("id"),
       name: this.get("name"),
-      depth: this.get("depth"),
-      elevation: this.get('elevation'),
-      dimObjects: this.get('dimObjects'),
-      isNotWall: this.get("isNotWall"),
     });
   },
 
@@ -57,40 +48,29 @@ fabric.AroomyLine = fabric.util.createClass(fabric.Polyline, {
 
   _addCustomControls() {
     const points = this.points ?? [];
-    const lastControl = points.length - 1;
     this.hasBorders = false;
     this.controls = points.reduce(
       (
-        accumulator: Record<string, AroomyLineControl>,
+        accumulator: Record<string, CustomLineControl>,
         _point: fabric.Point,
         index: number
       ) => {
-        accumulator["p" + index] = new AroomyLineControl({ pointIndex: index, objectType: this.type });
+        accumulator["p" + index] = new CustomLineControl({ pointIndex: index, objectType: this.type });
         return accumulator;
       },
       {}
     );
     return this;
   },
-
-  _getAbsPoints: function (points: fabric.Point[]) {
-    const matrix = this.calcTransformMatrix();
-    return points.map((p: any) =>
-      fabric.util.transformPoint(
-        new fabric.Point(p.x - this.pathOffset.x, p.y - this.pathOffset.y),
-        matrix
-      )
-    );
-  },
 });
 
-fabric.AroomyLine.fromObject = function (
+fabric.CustomLine.fromObject = function (
   object: any,
   callback?: (obj: fabric.Object) => void,
   extraParam?: any
 ): fabric.Polyline {
   return fabric.Object._fromObject(
-    "AroomyLine",
+    "CustomLine",
     object,
     callback,
     "points"

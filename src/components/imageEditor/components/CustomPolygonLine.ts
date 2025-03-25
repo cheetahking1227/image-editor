@@ -1,7 +1,7 @@
 import { fabric } from "fabric";
 
-fabric.AroomyPolyLine = fabric.util.createClass(fabric.AroomyLine, {
-  type: "aroomyPolyLine",
+fabric.CustomPolyLine = fabric.util.createClass(fabric.CustomLine, {
+  type: "customPolyLine",
   parentPolygon: null,
   parentId: null,
 
@@ -53,13 +53,13 @@ fabric.AroomyPolyLine = fabric.util.createClass(fabric.AroomyLine, {
   },
 });
 
-fabric.AroomyPolyLine.fromObject = function (
+fabric.CustomPolyLine.fromObject = function (
   object: any,
   callback?: (obj: fabric.Object) => void,
   extraParam?: any
 ): fabric.Polyline {
   return fabric.Object._fromObject(
-    "AroomyPolyLine",
+    "CustomPolyLine",
     object,
     callback,
     "points"

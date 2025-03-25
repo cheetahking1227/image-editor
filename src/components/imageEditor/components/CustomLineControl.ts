@@ -1,14 +1,14 @@
-import { AroomyLine, IAroomyLineControlOptions } from "fabric/fabric-impl";
+import { CustomLine, ICustomLineControlOptions } from "fabric/fabric-impl";
 import { fabric } from "fabric";
 
-export class AroomyLineControl extends fabric.Control {
+export class CustomLineControl extends fabric.Control {
   pointIndex: number = 0;
-  type: string = "aroomyLineControl";
+  type: string = "customLineControl";
   isActing: boolean = false;
   tempMatrix: number[] = [];
   objectType: string = "";
 
-  constructor(options: Partial<IAroomyLineControlOptions>) {
+  constructor(options: Partial<ICustomLineControlOptions>) {
     super({
       ...options,
       cursorStyle: options?.cursorStyle || "all-scroll",
@@ -17,7 +17,7 @@ export class AroomyLineControl extends fabric.Control {
     this.actionName = options.actionName || "modifyLine";
     this.objectType = options.objectType || "";
 
-    if (this.objectType === "aroomyPolyLine") this.visible = false;
+    if (this.objectType === "customPolyLine") this.visible = false;
   }
 
   // position handler
@@ -26,8 +26,8 @@ export class AroomyLineControl extends fabric.Control {
     _transformData: fabric.Transform,
     fabricObject: fabric.Object
   ) => {
-    const object = fabricObject as AroomyLine;
-    if (object.type !== "aroomyLine") return new fabric.Point(0, 0);
+    const object = fabricObject as CustomLine;
+    if (object.type !== "customLine") return new fabric.Point(0, 0);
     const index: number = this.pointIndex || 0;
     if (!object.points) {
       object.points = [];
@@ -51,9 +51,9 @@ export class AroomyLineControl extends fabric.Control {
     transformData: fabric.Transform
   ) => {
     this.isActing = true;
-    if (this.objectType === 'aroomyLine') {
-      const object = transformData.target as AroomyLine;
-      object.clone((cloned: fabric.AroomyLine) => {
+    if (this.objectType === 'customLine') {
+      const object = transformData.target as CustomLine;
+      object.clone((cloned: fabric.CustomLine) => {
         object.prevObject = cloned;
         object.prevObject.id = object.id;
       })
@@ -64,9 +64,7 @@ export class AroomyLineControl extends fabric.Control {
   // mouseUpHandler
   mouseUpHandler = (eventData: MouseEvent, transformData: fabric.Transform) => {
     this.isActing = false;
-    if (this.objectType === 'aroomyLine') {
-      const object = transformData.target as AroomyLine;
-      object.allLineObjects = undefined;
+    if (this.objectType === 'customLine') {
     }
     return true;
   };
@@ -91,7 +89,7 @@ export class AroomyLineControl extends fabric.Control {
     const canvas: fabric.Canvas | undefined = transformData.target.canvas;
     if (!canvas) return false;
 
-    const polyline = transformData.target as AroomyLine;
+    const polyline = transformData.target as CustomLine;
     polyline.activeControlIndex = this.pointIndex;
 
     if (!polyline.points) {
@@ -135,13 +133,12 @@ export class AroomyLineControl extends fabric.Control {
     }
 
     let points = [...polyline.points];
-    const absPoints = polyline._getAbsPoints(points);
     const pointer = new fabric.Point(finalPointPosition.x, finalPointPosition.y);
-    absPoints[this.pointIndex] = pointer;
-    polyline.set({ points: absPoints });
+    points[this.pointIndex] = pointer;
+    polyline.set({ points: points });
     polyline.dirty = true;
+    console.log(polyline.getBoundingRect());
     polyline.setCoords();
-    polyline._setPositionDimensions({});
     return true;
   };
 }

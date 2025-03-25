@@ -1,7 +1,7 @@
 import React from 'react';
 import ImageEditor from './components/imageEditor';
-import './components/imageEditor/components/AroomyLine';
-import './components/imageEditor/components/AroomyPolygonLine';
+import './components/imageEditor/components/CustomLine';
+import './components/imageEditor/components/CustomPolygonLine';
 
 function App() {
   return (

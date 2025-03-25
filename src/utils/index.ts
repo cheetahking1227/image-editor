@@ -8,7 +8,7 @@ export const drawPen = (canvas: fabric.Canvas) => {
 export const drawLine = (canvas: fabric.Canvas) => {
   canvas.isDrawingMode = false;
   let isDrawing = false;
-  let line: fabric.AroomyLine | null = null;
+  let line: fabric.CustomLine | null = null;
   let startX = 0;
   let startY = 0;
 
@@ -22,7 +22,7 @@ export const drawLine = (canvas: fabric.Canvas) => {
     startY = pointer.y;
 
     const linePoint = [new fabric.Point(startX, startY), new fabric.Point(startX, startY)];
-    line = new fabric.AroomyLine(linePoint, {
+    line = new fabric.CustomLine(linePoint, {
       stroke: 'white',
       strokeWidth: 2,
       selectable: false,
@@ -42,7 +42,6 @@ export const drawLine = (canvas: fabric.Canvas) => {
       linePoint[1] = new fabric.Point(pointer.x, pointer.y);
       line.set({ points: linePoint });
       line.setCoords();
-      line._setPositionDimensions({});
       line.dirty = true;
     }
     canvas.renderAll();
@@ -231,7 +230,7 @@ export const drawPath = (canvas: fabric.Canvas) => {
   let isDrawing = false;
   let points: fabric.Point[] = [];
   let livePolyline: fabric.Polyline | null = null;
-  let previewLine: fabric.AroomyLine | null = null;
+  let previewLine: fabric.CustomLine | null = null;
 
   const finishPolyline = () => {
     if (!isDrawing || points.length < 2) return;
@@ -257,7 +256,7 @@ export const drawPath = (canvas: fabric.Canvas) => {
     canvas.requestRenderAll();
   };
 
-  canvas.on('mouse:down', (opt) => {
+  canvas.on('mouse:down', (opt: any) => {
     const target = canvas.findTarget(opt.e, true);
     if (target) return;
 
@@ -285,7 +284,7 @@ export const drawPath = (canvas: fabric.Canvas) => {
     }
   });
 
-  canvas.on('mouse:move', (opt) => {
+  canvas.on('mouse:move', (opt : any) => {
     if (!isDrawing || points.length === 0) return;
 
     const pointer = canvas.getPointer(opt.e);
@@ -293,7 +292,7 @@ export const drawPath = (canvas: fabric.Canvas) => {
 
     if (previewLine) canvas.remove(previewLine);
 
-    previewLine = new fabric.AroomyLine([new fabric.Point(last.x, last.y), new fabric.Point(pointer.x, pointer.y)], {
+    previewLine = new fabric.CustomLine([new fabric.Point(last.x, last.y), new fabric.Point(pointer.x, pointer.y)], {
       stroke: 'white',
       strokeWidth: 2,
       selectable: false,

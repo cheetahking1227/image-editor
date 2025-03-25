@@ -7,19 +7,13 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel,
   SelectChangeEvent,
   ListItemText,
   ListItemIcon,
 } from "@mui/material";
 import {
   FolderOpen,
-  Undo,
-  Redo,
-  RemoveCircleOutline,
-  AddCircleOutline,
-  Crop,
-  Edit,
+  Crop as CropIcon,
   BorderColor,
   HorizontalRule,
   CropSquare,
@@ -30,14 +24,12 @@ import {
   InsertPhoto,
   Check,
   Close,
-  Loop,
   Save,
-  Height,
 } from "@mui/icons-material";
 import { fabric } from "fabric";
-import Cropper from "react-easy-crop";
+import ImageCropper from "./components/ImageCropper";
+import 'react-image-crop/dist/ReactCrop.css';
 import {
-  drawPen,
   drawLine,
   drawRectangle,
   drawEllipse,
@@ -66,8 +58,6 @@ const ImageEditor: React.FC = () => {
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
   const [viewMode, setViewMode] = useState<number>(1)
   const [completedImage, setCompletedImage] = useState<string>();
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [canvasWidth, setCanvasWidth] = useState<number>(1880);
   const [canvasHeight, setCanvasHeight] = useState<number>(800);
@@ -210,7 +200,7 @@ const ImageEditor: React.FC = () => {
         <IconButton><RemoveCircleOutline /></IconButton>
         <IconButton><AddCircleOutline /></IconButton> */}
         <Box flexGrow={1} />
-        <IconButton onClick={handleCrop}><Crop /></IconButton>
+        <IconButton onClick={handleCrop}><CropIcon /></IconButton>
         <FormControl sx={{ m: 1, minWidth: 60 }} size="small">
           <Select
             labelId="demo-simple-select-standard-label"
@@ -238,12 +228,10 @@ const ImageEditor: React.FC = () => {
         </FormControl>
         <Box flexGrow={1} />
         {
-          isWorking
-            ? (<>
-              <IconButton onClick={showCroppedImage}><Check /></IconButton>
-              <IconButton onClick={cancelCrop}><Close /></IconButton>
-            </>)
-            : (<></>)
+          isWorking && (<>
+            <IconButton onClick={showCroppedImage}><Check /></IconButton>
+            <IconButton onClick={cancelCrop}><Close /></IconButton>
+          </>)
         }
         {/* <IconButton><Loop /></IconButton> */}
         <IconButton><Save /></IconButton>
@@ -301,23 +289,7 @@ const ImageEditor: React.FC = () => {
                   alignItems: "center",
                 }}
               >
-                <Cropper
-                  image={completedImage}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={undefined}
-                  cropShape="rect"
-                  showGrid={true}
-                  restrictPosition={true}
-                  minZoom={1}
-                  maxZoom={3}
-                  zoomSpeed={0.1}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onCropComplete={(_, croppedPixels) => {
-                    setCroppedAreaPixels(croppedPixels);
-                  }}
-                />
+                <ImageCropper imageSrc={completedImage || ''} />
               </Box>
             )}
           </Box>
