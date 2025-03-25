@@ -35,7 +35,6 @@ import {
   drawEllipse,
   drawPath,
   initEvent,
-  getCroppedImg,
 } from "../../utils";
 
 const annotations = [
@@ -55,10 +54,7 @@ const ImageEditor: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
   const [viewMode, setViewMode] = useState<number>(1)
-  const [completedImage, setCompletedImage] = useState<string>();
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [canvasWidth, setCanvasWidth] = useState<number>(1880);
   const [canvasHeight, setCanvasHeight] = useState<number>(800);
   const [isWorking, setIsWorking] = useState<boolean>(false);
@@ -74,46 +70,44 @@ const ImageEditor: React.FC = () => {
     }
   }, [viewMode]);
 
-  // Load image object when imageUrl changes
-  useEffect(() => {
-    if (!imageUrl) return;
+  const drawImage = (url: string) => {
     const img = new Image();
-    img.src = imageUrl;
-    img.onload = () => setImageObj(img);
-  }, [imageUrl]);
+    img.src = url;
+    img.onload = () => {
+      const canvas = fabricCanvasRef.current;
+      if (!canvas) return;
+      if (!img) return;
+      const maxWidth = 1880;  // leave margin
+      const maxHeight = 800; // leave room for toolbar, etc.
 
+      let targetWidth = img.width;
+      let targetHeight = img.height;
+
+      // Scale down to fit screen
+      const widthRatio = maxWidth / img.width;
+      const heightRatio = maxHeight / img.height;
+      const scale = Math.min(widthRatio, heightRatio, 1); // Don’t upscale
+
+      targetWidth = img.width * scale;
+      targetHeight = img.height * scale;
+
+      // Set canvas size
+      canvas.setWidth(targetWidth);
+      canvas.setHeight(targetHeight);
+      setCanvasWidth(targetWidth);
+      setCanvasHeight(targetHeight);
+
+      const fabricImage = new fabric.Image(img)
+      fabricImage.scaleToWidth(targetWidth);
+      fabricImage.scaleToHeight(targetHeight);
+      canvas.backgroundImage = fabricImage;
+      canvas.renderAll()
+    }
+  }
   // Draw image on canvas
   useEffect(() => {
-    if (!imageObj || !fabricCanvasRef.current) return;
-
-    const canvas = fabricCanvasRef.current;
-
-    const maxWidth = 1880;  // leave margin
-    const maxHeight = 800; // leave room for toolbar, etc.
-
-    let targetWidth = imageObj.width;
-    let targetHeight = imageObj.height;
-
-    // Scale down to fit screen
-    const widthRatio = maxWidth / imageObj.width;
-    const heightRatio = maxHeight / imageObj.height;
-    const scale = Math.min(widthRatio, heightRatio, 1); // Don’t upscale
-
-    targetWidth = imageObj.width * scale;
-    targetHeight = imageObj.height * scale;
-
-    // Set canvas size
-    canvas.setWidth(targetWidth);
-    canvas.setHeight(targetHeight);
-    setCanvasWidth(targetWidth);
-    setCanvasHeight(targetHeight);
-
-    const fabricImage = new fabric.Image(imageObj)
-    fabricImage.scaleToWidth(targetWidth);
-    fabricImage.scaleToHeight(targetHeight);
-    fabricCanvasRef.current.backgroundImage = fabricImage;
-    fabricCanvasRef.current.renderAll()
-  }, [imageObj]);
+    drawImage(imageUrl || '');
+  }, [imageUrl]);
 
   useEffect(() => {
     const canvas = fabricCanvasRef.current;
@@ -144,38 +138,27 @@ const ImageEditor: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  const showCroppedImage = async () => {
-    try {
-      setIsWorking(false);
-      const croppedImg = await getCroppedImg(completedImage!, croppedAreaPixels);
-      setImageUrl(croppedImg); // This triggers image reload and canvas redraw
-      setViewMode(1); // Back to main canvas view
-    } catch (e) {
-      console.error(e);
-    }
+  const showCroppedImage = async (croppedDataUrl: string) => {
+    setIsWorking(false);
+    setImageUrl(croppedDataUrl); // Reload image into fabric.js
+    setViewMode(1);
   };
 
   const handleCrop = () => {
-    if (fabricCanvasRef.current) {
-      setIsWorking(true);
-      if (viewMode === 1) {
-        const dataURL = fabricCanvasRef.current.toDataURL();
-        fabricCanvasRef.current.dispose();
-        fabricCanvasRef.current = null;
-        setCompletedImage(dataURL);
-        setViewMode(2);
-      } else {
-        // showCroppedImage();
-      }
+    setIsWorking(true);
+    if (viewMode === 1 && fabricCanvasRef.current) {
+      fabricCanvasRef.current.dispose();
+      fabricCanvasRef.current = null;
+      setViewMode(2);
+    } else if (viewMode === 2) {
+      (window as any).cropperPerformCrop?.(); // trigger actual cropping
     }
-  }
+  };  
 
   const cancelCrop = () => {
+    setViewMode(1);
     setIsWorking(false);
-    if (completedImage) {
-      setImageUrl(completedImage); // reload canvas with previous image
-      setViewMode(1);
-    }
+    drawImage(imageUrl || '');
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -229,7 +212,7 @@ const ImageEditor: React.FC = () => {
         <Box flexGrow={1} />
         {
           isWorking && (<>
-            <IconButton onClick={showCroppedImage}><Check /></IconButton>
+            <IconButton onClick={handleCrop}><Check /></IconButton>
             <IconButton onClick={cancelCrop}><Close /></IconButton>
           </>)
         }
@@ -272,7 +255,7 @@ const ImageEditor: React.FC = () => {
                 <canvas
                   ref={canvasRef}
                   style={{
-                    border: "1px solid #ccc",
+                    border: "1px solid #f00",
                   }}
                 />
               </Box>
@@ -289,7 +272,7 @@ const ImageEditor: React.FC = () => {
                   alignItems: "center",
                 }}
               >
-                <ImageCropper imageSrc={completedImage || ''} />
+                <ImageCropper imageSrc={(imageUrl) || ''} onCropConfirm={showCroppedImage} />
               </Box>
             )}
           </Box>
