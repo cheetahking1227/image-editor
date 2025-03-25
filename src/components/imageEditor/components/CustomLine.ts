@@ -62,6 +62,16 @@ fabric.CustomLine = fabric.util.createClass(fabric.Polyline, {
     );
     return this;
   },
+
+  _getAbsPoints: function (points: fabric.Point[]) {
+    const matrix = this.calcTransformMatrix();
+    return points.map((p: any) =>
+      fabric.util.transformPoint(
+        new fabric.Point(p.x - this.pathOffset.x, p.y - this.pathOffset.y),
+        matrix
+      )
+    );
+  },
 });
 
 fabric.CustomLine.fromObject = function (
