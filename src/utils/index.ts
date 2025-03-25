@@ -1,4 +1,4 @@
-import * as fabric from 'fabric'
+import { fabric } from "fabric";
 
 export const drawPen = (canvas: fabric.Canvas) => {
   canvas.isDrawingMode = true;
@@ -6,8 +6,63 @@ export const drawPen = (canvas: fabric.Canvas) => {
 }
 
 export const drawLine = (canvas: fabric.Canvas) => {
+  canvas.isDrawingMode = false;
+  let isDrawing = false;
+  let line: fabric.AroomyLine | null = null;
+  let startX = 0;
+  let startY = 0;
 
+  canvas.on('mouse:down', (opt: any) => {
+    const target = canvas.findTarget(opt.e, true);
+    if (target) return; // Prevent drawing over existing object
+
+    const pointer = canvas.getPointer(opt.e);
+    isDrawing = true;
+    startX = pointer.x;
+    startY = pointer.y;
+
+    const linePoint = [new fabric.Point(startX, startY), new fabric.Point(startX, startY)];
+    line = new fabric.AroomyLine(linePoint, {
+      stroke: 'white',
+      strokeWidth: 2,
+      selectable: false,
+      evented: true,
+      hasBorders: false,
+      perPixelTargetFind: true,
+    });
+    canvas.add(line);
+  });
+
+  canvas.on('mouse:move', (opt: any) => {
+    if (!isDrawing || !line) return;
+    console.log('draw line is called')
+    const pointer = opt.absolutePointer;
+    const linePoint = line.points;
+    if (linePoint) {
+      linePoint[1] = new fabric.Point(pointer.x, pointer.y);
+      line.set({ points: linePoint });
+      line.setCoords();
+      line._setPositionDimensions({});
+      line.dirty = true;
+    }
+    canvas.renderAll();
+  });
+
+  canvas.on('mouse:up', () => {
+    if (line) {
+      line.set({
+        selectable: true,
+        evented: true,
+      });
+
+      canvas.setActiveObject(line);
+    }
+
+    isDrawing = false;
+    line = null;
+  });
 }
+
 export const drawRectangle = (canvas: fabric.Canvas) => {
   canvas.isDrawingMode = false;
   let isDrawing = false;
@@ -15,16 +70,21 @@ export const drawRectangle = (canvas: fabric.Canvas) => {
   let startX = 0;
   let startY = 0;
 
-  fabric.FabricObject.prototype.transparentCorners = false;
-  fabric.FabricObject.prototype.cornerColor = 'blue';
-  fabric.FabricObject.prototype.cornerStyle = 'circle';
+  fabric.Object.prototype.transparentCorners = false;
+  fabric.Object.prototype.cornerColor = 'white';
+  fabric.Object.prototype.cornerStyle = 'circle';
+  fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
+  fabric.Object.prototype.cornerSize = 16;
 
   canvas.on('mouse:down', (opt: any) => {
-    const pointer = canvas.getScenePoint(opt.e);
+    const target = canvas.findTarget(opt.e, true);
+    if (target) return; // Prevent drawing over existing object
+
+    const pointer = canvas.getPointer(opt.e);
     isDrawing = true;
 
-    const target = canvas.findTarget(opt.e);
-    if (target) return;
+    // const target = canvas.findTarget(opt.e);
+    // if (target) return;
 
     startX = pointer.x;
     startY = pointer.y;
@@ -48,7 +108,7 @@ export const drawRectangle = (canvas: fabric.Canvas) => {
   canvas.on('mouse:move', (opt: any) => {
     if (!isDrawing || !rect) return;
 
-    const pointer = canvas.getScenePoint(opt.e);
+    const pointer = canvas.getPointer(opt.e);
     const width = pointer.x - startX;
     const height = pointer.y - startY;
 
@@ -77,6 +137,7 @@ export const drawRectangle = (canvas: fabric.Canvas) => {
     rect = null;
   });
 }
+
 export const drawEllipse = (canvas: fabric.Canvas) => {
   canvas.isDrawingMode = false;
   let isDrawing = false;
@@ -84,14 +145,17 @@ export const drawEllipse = (canvas: fabric.Canvas) => {
   let startX = 0;
   let startY = 0;
 
-  fabric.FabricObject.prototype.transparentCorners = false;
-  fabric.FabricObject.prototype.cornerColor = 'blue';
-  fabric.FabricObject.prototype.cornerStyle = 'circle';
+  fabric.Object.prototype.transparentCorners = false;
+  fabric.Object.prototype.cornerColor = 'white';
+  fabric.Object.prototype.cornerStyle = 'circle';
+  fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
+  fabric.Object.prototype.cornerSize = 16;
 
   canvas.on('mouse:down', (opt: any) => {
-    const pointer = canvas.getScenePoint(opt.e);
-    const target = canvas.findTarget(opt.e);
+    const target = canvas.findTarget(opt.e, true);
     if (target) return; // Prevent drawing over existing object
+
+    const pointer = canvas.getPointer(opt.e);
 
     isDrawing = true;
     startX = pointer.x;
@@ -118,7 +182,7 @@ export const drawEllipse = (canvas: fabric.Canvas) => {
   canvas.on('mouse:move', (opt: any) => {
     if (!isDrawing || !ellipse) return;
 
-    const pointer = canvas.getScenePoint(opt.e);
+    const pointer = canvas.getPointer(opt.e);
 
     const rx = Math.abs(pointer.x - startX) / 2;
     const ry = Math.abs(pointer.y - startY) / 2;
@@ -150,15 +214,133 @@ export const drawEllipse = (canvas: fabric.Canvas) => {
     ellipse = null;
   });
 }
+
 export const drawArrow = (canvas: fabric.Canvas) => {
 
 }
-export const drawPath = (canvas: fabric.Canvas) => {
 
+export const drawPath = (canvas: fabric.Canvas) => {
+  // Match your existing styles
+  canvas.isDrawingMode = false;
+  fabric.Object.prototype.transparentCorners = false;
+  fabric.Object.prototype.cornerColor = 'white';
+  fabric.Object.prototype.cornerStyle = 'circle';
+  fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
+  fabric.Object.prototype.cornerSize = 16;
+
+  let isDrawing = false;
+  let points: fabric.Point[] = [];
+  let livePolyline: fabric.Polyline | null = null;
+  let previewLine: fabric.AroomyLine | null = null;
+
+  const finishPolyline = () => {
+    if (!isDrawing || points.length < 2) return;
+
+    if (previewLine) {
+      canvas.remove(previewLine);
+      previewLine = null;
+    }
+
+    if (livePolyline) {
+      livePolyline.set({
+        selectable: true,
+        hasControls: true,
+        hasBorders: true,
+        evented: true,
+      });
+      canvas.setActiveObject(livePolyline);
+      livePolyline = null;
+    }
+
+    isDrawing = false;
+    points = [];
+    canvas.requestRenderAll();
+  };
+
+  canvas.on('mouse:down', (opt) => {
+    const target = canvas.findTarget(opt.e, true);
+    if (target) return;
+
+    const pointer = canvas.getPointer(opt.e);
+
+    if (!isDrawing) {
+      isDrawing = true;
+      points.push(new fabric.Point(pointer.x, pointer.y));
+      livePolyline = new fabric.Polyline(points, {
+        stroke: 'white',
+        strokeWidth: 2,
+        fill: 'rgba(255,255,255,0.05)',
+        selectable: false,
+        evented: false,
+        objectCaching: false,
+      });
+
+      canvas.add(livePolyline);
+    } else {
+      points.push(new fabric.Point(pointer.x, pointer.y));
+      if (livePolyline) {
+        livePolyline.set({ points });
+        canvas.requestRenderAll();
+      }
+    }
+  });
+
+  canvas.on('mouse:move', (opt) => {
+    if (!isDrawing || points.length === 0) return;
+
+    const pointer = canvas.getPointer(opt.e);
+    const last = points[points.length - 1];
+
+    if (previewLine) canvas.remove(previewLine);
+
+    previewLine = new fabric.AroomyLine([new fabric.Point(last.x, last.y), new fabric.Point(pointer.x, pointer.y)], {
+      stroke: 'white',
+      strokeWidth: 2,
+      selectable: false,
+      evented: false,
+    });
+
+    canvas.add(previewLine);
+    canvas.requestRenderAll();
+  });
+
+  const upperCanvasEl = (canvas as any).upperCanvasEl as HTMLCanvasElement;
+  upperCanvasEl.addEventListener('dblclick', finishPolyline);
 }
 
 export const initEvent = (canvas: fabric.Canvas) => {
   canvas.off("mouse:down");
   canvas.off("mouse:move");
   canvas.off("mouse:up");
+}
+
+export const getCroppedImg = (imageSrc: string, pixelCrop: any): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.src = imageSrc;
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = pixelCrop.width;
+      canvas.height = pixelCrop.height;
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) return reject("No 2D context");
+
+      ctx.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        pixelCrop.width,
+        pixelCrop.height
+      );
+
+      resolve(canvas.toDataURL("image/jpeg"));
+    };
+    image.onerror = reject;
+  });
 }
