@@ -6,7 +6,6 @@ export const drawPen = (canvas: fabric.Canvas) => {
 }
 
 export const drawLine = (canvas: fabric.Canvas) => {
-  canvas.isDrawingMode = false;
   let isDrawing = false;
   let line: fabric.CustomLine | null = null;
   let startX = 0;
@@ -63,7 +62,6 @@ export const drawLine = (canvas: fabric.Canvas) => {
 }
 
 export const drawRectangle = (canvas: fabric.Canvas) => {
-  canvas.isDrawingMode = false;
   let isDrawing = false;
   let rect: fabric.Rect | null = null;
   let startX = 0;
@@ -138,7 +136,6 @@ export const drawRectangle = (canvas: fabric.Canvas) => {
 }
 
 export const drawEllipse = (canvas: fabric.Canvas) => {
-  canvas.isDrawingMode = false;
   let isDrawing = false;
   let ellipse: fabric.Ellipse | null = null;
   let startX = 0;
@@ -215,8 +212,6 @@ export const drawEllipse = (canvas: fabric.Canvas) => {
 }
 
 export const drawArrow = (canvas: fabric.Canvas) => {
-  canvas.isDrawingMode = false;
-
   let isDrawing = false;
   let arrowLine: fabric.CustomLine | null = null;
   let arrowHead: fabric.Triangle | null = null;
@@ -330,7 +325,6 @@ export const drawArrow = (canvas: fabric.Canvas) => {
 
 export const drawPath = (canvas: fabric.Canvas) => {
   // Match your existing styles
-  canvas.isDrawingMode = false;
   fabric.Object.prototype.transparentCorners = false;
   fabric.Object.prototype.cornerColor = 'white';
   fabric.Object.prototype.cornerStyle = 'circle';
@@ -476,6 +470,7 @@ export const addImage = (canvas: fabric.Canvas, event: React.ChangeEvent<HTMLInp
 }
 
 export const initEvent = (canvas: fabric.Canvas) => {
+  canvas.isDrawingMode = false;
   canvas.off("mouse:down");
   canvas.off("mouse:move");
   canvas.off("mouse:up");

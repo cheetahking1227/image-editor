@@ -33,3 +33,10 @@ export interface ICustomLineControlOptions extends Control {
   pointIndex?: number;
   objectType?: string;
 }
+
+export type BgImageFinetuneItem = {
+  title: string;
+  value: number;
+  min: number;
+  max: number;
+}
