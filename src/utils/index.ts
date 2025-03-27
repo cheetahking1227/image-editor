@@ -1,16 +1,17 @@
 import { fabric } from "fabric";
+import { RgbaColor } from "react-colorful";
 
 export const drawPen = (canvas: fabric.Canvas) => {
   canvas.isDrawingMode = true;
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
 }
 
-export const drawLine = (canvas: fabric.Canvas) => {
+export const drawLine = (canvas: fabric.Canvas, color: string, strokeWidth: number) => {
   let isDrawing = false;
   let line: fabric.CustomLine | null = null;
   let startX = 0;
   let startY = 0;
-
+  console.log(color);
   canvas.on('mouse:down', (opt: any) => {
     const target = canvas.findTarget(opt.e, true);
     if (target) return; // Prevent drawing over existing object
@@ -22,8 +23,8 @@ export const drawLine = (canvas: fabric.Canvas) => {
 
     const linePoint = [new fabric.Point(startX, startY), new fabric.Point(startX, startY)];
     line = new fabric.CustomLine(linePoint, {
-      stroke: 'white',
-      strokeWidth: 2,
+      stroke: color,
+      strokeWidth: strokeWidth,
       selectable: false,
       evented: true,
       hasBorders: false,
@@ -61,7 +62,7 @@ export const drawLine = (canvas: fabric.Canvas) => {
   });
 }
 
-export const drawRectangle = (canvas: fabric.Canvas) => {
+export const drawRectangle = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor, strokeWidth: number) => {
   let isDrawing = false;
   let rect: fabric.Rect | null = null;
   let startX = 0;
@@ -91,9 +92,9 @@ export const drawRectangle = (canvas: fabric.Canvas) => {
       top: startY,
       width: 0,
       height: 0,
-      fill: 'transparent',
-      stroke: 'white',
-      strokeWidth: 1,
+      fill: `rgba(${bgColor.r},${bgColor.g},${bgColor.b},${bgColor.a})`,
+      stroke: color,
+      strokeWidth: strokeWidth,
       objectCaching: false,
       selectable: false,
       hasControls: false, // prevent mid-draw interactions
@@ -135,7 +136,7 @@ export const drawRectangle = (canvas: fabric.Canvas) => {
   });
 }
 
-export const drawEllipse = (canvas: fabric.Canvas) => {
+export const drawEllipse = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor, strokeWidth: number) => {
   let isDrawing = false;
   let ellipse: fabric.Ellipse | null = null;
   let startX = 0;
@@ -164,9 +165,9 @@ export const drawEllipse = (canvas: fabric.Canvas) => {
       ry: 1,
       originX: 'center',
       originY: 'center',
-      fill: 'transparent',
-      stroke: 'white',
-      strokeWidth: 1,
+      fill: `rgba(${bgColor.r},${bgColor.g},${bgColor.b},${bgColor.a})`,
+      stroke: color,
+      strokeWidth: strokeWidth,
       selectable: false,
       hasControls: false,
       objectCaching: false,
@@ -211,7 +212,7 @@ export const drawEllipse = (canvas: fabric.Canvas) => {
   });
 }
 
-export const drawArrow = (canvas: fabric.Canvas) => {
+export const drawArrow = (canvas: fabric.Canvas, color: string, strokeWidth: number) => {
   let isDrawing = false;
   let arrowLine: fabric.CustomLine | null = null;
   let arrowHead: fabric.Triangle | null = null;
@@ -231,8 +232,8 @@ export const drawArrow = (canvas: fabric.Canvas) => {
     // Create line
     const linePoint = [new fabric.Point(startX, startY), new fabric.Point(startX, startY)];
     arrowLine = new fabric.CustomLine(linePoint, {
-      stroke: 'white',
-      strokeWidth: 2,
+      stroke: color,
+      strokeWidth: strokeWidth,
       selectable: false,
       evented: false,
     });
@@ -241,7 +242,7 @@ export const drawArrow = (canvas: fabric.Canvas) => {
     arrowHead = new fabric.Triangle({
       width: 10,
       height: 12,
-      fill: 'white',
+      fill: color,
       left: startX,
       top: startY,
       originX: 'center',
@@ -323,7 +324,7 @@ export const drawArrow = (canvas: fabric.Canvas) => {
 
 }
 
-export const drawPath = (canvas: fabric.Canvas) => {
+export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: number) => {
   // Match your existing styles
   fabric.Object.prototype.transparentCorners = false;
   fabric.Object.prototype.cornerColor = 'white';
@@ -370,8 +371,8 @@ export const drawPath = (canvas: fabric.Canvas) => {
       isDrawing = true;
       points.push(new fabric.Point(pointer.x, pointer.y));
       livePolyline = new fabric.Polyline(points, {
-        stroke: 'white',
-        strokeWidth: 2,
+        stroke: color,
+        strokeWidth: strokeWidth,
         fill: 'rgba(255,255,255,0.05)',
         selectable: false,
         evented: false,
@@ -397,8 +398,8 @@ export const drawPath = (canvas: fabric.Canvas) => {
     if (previewLine) canvas.remove(previewLine);
 
     previewLine = new fabric.CustomLine([new fabric.Point(last.x, last.y), new fabric.Point(pointer.x, pointer.y)], {
-      stroke: 'white',
-      strokeWidth: 2,
+      stroke: color,
+      strokeWidth: strokeWidth,
       selectable: false,
       evented: false,
     });

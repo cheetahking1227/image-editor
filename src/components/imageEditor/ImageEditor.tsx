@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { fabric } from "fabric";
 import ImageCropper from "./components/ImageCropper";
+import { RgbaColor } from "react-colorful";
 import 'react-image-crop/dist/ReactCrop.css';
 import {
   drawPen,
@@ -44,6 +45,8 @@ import {
 } from "../../utils";
 import { BgImageFinetuneItem } from "../../types";
 import { BG_IMAGE_FINETUNE } from "../../Constants";
+import ColorAndStrokeSettings from "./components/ColorAndStrokeSettings";
+import FilterSettings from "./components/FilterSettings";
 
 const annotations = [
   { label: 'Pen', icon: <PenLine size={20} /> },
@@ -72,7 +75,13 @@ const ImageEditor: React.FC = () => {
   const [finetune, setFinetune] = useState<number>(0);
   const [rangeValue, setRangeValue] = useState<number>(0);
   const [bgImageFinetune, setBgImageFinetune] = useState<BgImageFinetuneItem[]>(BG_IMAGE_FINETUNE);
+  const [isSelectedAnnotation, setIsSelectedAnnotation] = useState<number>(9);
+  const [color, setColor] = useState<string>('#FFF');
+  const [bgColor, setBgColor] = useState<RgbaColor>({ "r": 0, "g": 0, "b": 0, "a": 0 });
+  const [strokeWidth, setStrokeWidth] = useState<number>(1);
   const [annotation, setAnnotation] = useState<string>('');
+  const [isSelectedFilter, setIsSelectedFilter] = useState<boolean>(false);
+  const [filter, setFilter] = useState<string>('');
 
   // const selectedIcon = annotations.find((tool) => tool.label === annotation)?.icon;
 
@@ -84,7 +93,51 @@ const ImageEditor: React.FC = () => {
     }
   }, [viewMode]);
 
-  const drawImage = (url: string, zoom: number = 1, applyFilters: boolean = false) => {
+  useEffect(() => {
+    handleAnnotatinoRefresh();
+  }, [annotation, color, bgColor, strokeWidth]);
+
+  useEffect(() => {
+    drawImage(imageUrl || '', zoom);
+  }, [filter]);
+
+  const drawImage = (url: string, zoom: number = 1) => {
+    const filters: fabric.IBaseFilter[] = [];
+
+    bgImageFinetune.forEach((item, index) => {
+      switch (index) {
+        case 0:
+          filters.push(new fabric.Image.filters.Brightness({ brightness: item.value / 100 }));
+          break;
+        case 1:
+          filters.push(new fabric.Image.filters.Contrast({ contrast: item.value / 100 }));
+          break;
+        case 2:
+          filters.push(new fabric.Image.filters.HueRotation({ rotation: item.value / 100 }));
+          break;
+        case 3:
+          filters.push(new fabric.Image.filters.Saturation({ saturation: item.value / 100 }));
+          break;
+        case 4:
+          filters.push(new fabric.Image.filters.Exposure({ exposure: item.value / 100 }));
+          break;
+        case 5:
+          filters.push(new fabric.Image.filters.Opacity({ opacity: item.value / 100 }));
+          break;
+        case 6:
+          filters.push(new fabric.Image.filters.Blur({ blur: item.value / 100 }));
+          break;
+        default:
+          break;
+      }
+    })
+
+    if (filter === 'Grayscale') {
+      filters.push(new fabric.Image.filters.Grayscale());
+    } else if (filter === 'Invert') {
+      filters.push(new fabric.Image.filters.Invert());
+    }
+
     const img = new Image();
     img.src = url;
     img.onload = () => {
@@ -114,6 +167,8 @@ const ImageEditor: React.FC = () => {
       const fabricImage = new fabric.Image(img)
       fabricImage.scaleToWidth(targetWidth);
       fabricImage.scaleToHeight(targetHeight);
+      fabricImage.applyFilters(filters);
+
       canvas.backgroundImage = fabricImage;
       canvas.renderAll()
     }
@@ -163,6 +218,8 @@ const ImageEditor: React.FC = () => {
     setIsWorking(false);
     drawImage(imageUrl || '');
     setIsSelectedFinetune(false);
+    setIsSelectedAnnotation(9);
+    setIsSelectedFilter(false);
   };
 
 
@@ -171,7 +228,7 @@ const ImageEditor: React.FC = () => {
     event.target.value = '';
   }
 
-  const handleAnnotationSelect = (annotation: string) => {
+  const handleAnnotatinoRefresh = () => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
     initEvent(canvas);
@@ -180,23 +237,27 @@ const ImageEditor: React.FC = () => {
         drawPen(canvas);
         break;
       case 'Line':
-        drawLine(canvas);
+        drawLine(canvas, color, strokeWidth);
         break;
       case 'Rectangle':
-        drawRectangle(canvas);
+        drawRectangle(canvas, color, bgColor, strokeWidth);
         break;
       case 'Ellipse':
-        drawEllipse(canvas);
+        drawEllipse(canvas, color, bgColor, strokeWidth);
         break;
       case 'Arrow':
-        drawArrow(canvas);
+        drawArrow(canvas, color, strokeWidth);
         break;
       case 'Path':
-        drawPath(canvas);
+        drawPath(canvas, color, strokeWidth);
         break;
       default:
         break;
     }
+  }
+
+  const handleAnnotationSelect = (value: string) => {
+    setAnnotation(value);
   }
 
   const handleZoomChange = (value: number) => {
@@ -208,54 +269,71 @@ const ImageEditor: React.FC = () => {
   }
 
   const applyImage = () => {
-    const filters: fabric.IBaseFilter[] = [];
+    drawImage(imageUrl || '', zoom)
+    // const filters: fabric.IBaseFilter[] = [];
 
-    bgImageFinetune.forEach((item, index) => {
-      switch (index) {
-        case 0:
-          filters.push(new fabric.Image.filters.Brightness({ brightness: item.value / 100 }));
-          break;
-        case 1:
-          filters.push(new fabric.Image.filters.Contrast({ contrast: item.value / 100 }));
-          break;
-        case 2:
-          filters.push(new fabric.Image.filters.HueRotation({ rotation: item.value / 100 }));
-          break;
-        case 3:
-          filters.push(new fabric.Image.filters.Saturation({ saturation: item.value / 100 }));
-          break;
-        case 4:
-          filters.push(new fabric.Image.filters.Exposure({ exposure: item.value / 100 }));
-          break;
-        case 5:
-          filters.push(new fabric.Image.filters.Opacity({ opacity: item.value / 100 }));
-          break;
-        case 6:
-          filters.push(new fabric.Image.filters.Blur({ blur: item.value / 100 }));
-          break;
-        default:
-          break;
-      }
-    })
+    // bgImageFinetune.forEach((item, index) => {
+    //   switch (index) {
+    //     case 0:
+    //       filters.push(new fabric.Image.filters.Brightness({ brightness: item.value / 100 }));
+    //       break;
+    //     case 1:
+    //       filters.push(new fabric.Image.filters.Contrast({ contrast: item.value / 100 }));
+    //       break;
+    //     case 2:
+    //       filters.push(new fabric.Image.filters.HueRotation({ rotation: item.value / 100 }));
+    //       break;
+    //     case 3:
+    //       filters.push(new fabric.Image.filters.Saturation({ saturation: item.value / 100 }));
+    //       break;
+    //     case 4:
+    //       filters.push(new fabric.Image.filters.Exposure({ exposure: item.value / 100 }));
+    //       break;
+    //     case 5:
+    //       filters.push(new fabric.Image.filters.Opacity({ opacity: item.value / 100 }));
+    //       break;
+    //     case 6:
+    //       filters.push(new fabric.Image.filters.Blur({ blur: item.value / 100 }));
+    //       break;
+    //     default:
+    //       break;
+    //   }
+    // })
 
-    const img = new Image();
-    img.src = imageUrl!;
-    img.onload = () => {
-      const canvas = fabricCanvasRef.current;
-      if (!canvas) return;
-      if (!img) return;
-      const fabricImage = new fabric.Image(img)
-      // fabricImage.filters = filters;
-      fabricImage.applyFilters(filters);
-      canvas.backgroundImage = fabricImage;
-      canvas.renderAll()
-    }
+    // const img = new Image();
+    // img.src = imageUrl!;
+    // img.onload = () => {
+    //   const canvas = fabricCanvasRef.current;
+    //   if (!canvas) return;
+    //   if (!img) return;
+    //   const fabricImage = new fabric.Image(img)
+
+    //   fabricImage.applyFilters(filters);
+    //   canvas.backgroundImage = fabricImage;
+    //   canvas.renderAll()
+    // }
   };
 
   const handleRangeValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setRangeValue(parseInt(e.target.value));
     bgImageFinetune[finetune].value = parseInt(e.target.value);
     applyImage();
+  }
+
+  const onColorChange = (color: string) => {
+    setColor(color);
+  }
+
+  const onWidthChange = (width: number) => {
+    setStrokeWidth(width);
+  }
+
+  const onBgColorChange = (bgColor: RgbaColor) => {
+    setBgColor(bgColor);
+  }
+
+  const onFilterChange = (value: string) => {
+    setFilter(value);
   }
 
   return (
@@ -266,12 +344,12 @@ const ImageEditor: React.FC = () => {
           <button className="btn btn-ghost btn-sm" title="Open" onClick={handleBgImageFileOpen}>
             <FolderOpen size={20} />
           </button>
-          <button className="btn btn-ghost btn-sm" title="Undo">
+          {/* <button className="btn btn-ghost btn-sm" title="Undo">
             <Undo2 size={20} />
           </button>
           <button className="btn btn-ghost btn-sm" title="Redo">
             <Redo2 size={20} />
-          </button>
+          </button> */}
           <button className="btn btn-ghost btn-sm" title="Zoom Out" disabled={zoom === 1 ? true : false} onClick={() => { handleZoomChange(-0.1) }}>
             <MinusCircle size={20} />
           </button>
@@ -289,14 +367,14 @@ const ImageEditor: React.FC = () => {
               {
                 annotations.map((item, index) => (
                   item.label === 'Add Image'
-                    ? <button key={index} className="btn btn-ghost btn-sm" title={item.label} onClick={() => { addImageInputRef.current?.click() }}>
+                    ? <button key={index} className="btn btn-ghost btn-sm" title={item.label} onClick={() => { addImageInputRef.current?.click(); setIsSelectedAnnotation(index) }}>
                       {item.icon}
                     </button>
                     : item.label === 'Add Text'
-                      ? <button key={index} className="btn btn-ghost btn-sm" title={item.label} onClick={() => { addText(fabricCanvasRef.current!) }}>
+                      ? <button key={index} className="btn btn-ghost btn-sm" title={item.label} onClick={() => { addText(fabricCanvasRef.current!); setIsSelectedAnnotation(index) }}>
                         {item.icon}
                       </button>
-                      : <button key={index} className="btn btn-ghost btn-sm" title={item.label} onClick={() => { handleAnnotationSelect(item.label) }}>
+                      : <button key={index} className="btn btn-ghost btn-sm" title={item.label} onClick={() => { handleAnnotationSelect(item.label); setIsSelectedAnnotation(index) }}>
                         {item.icon}
                       </button>
                 ))
@@ -306,7 +384,7 @@ const ImageEditor: React.FC = () => {
               <button className="btn btn-ghost btn-sm" title="Finetune" onClick={() => { setIsSelectedFinetune(true) }}>
                 <SlidersHorizontal size={20} />
               </button>
-              <button className="btn btn-ghost btn-sm" title="Filter">
+              <button className="btn btn-ghost btn-sm" title="Filter" onClick={() => { setIsSelectedFilter(true) }}>
                 <Blend size={20} />
               </button>
             </div>
@@ -363,22 +441,37 @@ const ImageEditor: React.FC = () => {
           onChange={handleImageAdd}
           style={{ display: "none" }}
         />
-        {isSelectedFinetune && (
-          <div className="absolute flex top-10 left-0 right-0 z-10 justify-center items-center bg-base-200 border-error mt-2 p-4 shadow-lg gap-4">
-            <label className="block text-center">
-              {bgImageFinetune[finetune].title}
-            </label>
-            <input
-              type="range"
-              min={bgImageFinetune[finetune].min}
-              max={bgImageFinetune[finetune].max}
-              value={bgImageFinetune[finetune].value}
-              className="range range-xs text-white [--range-bg:black] [--range-thumb:blue] [--range-fill:0]"
-              onChange={(e) => { handleRangeValueChange(e) }}
-              step={10}
-            />
-            <div className="text-center ml-5">{bgImageFinetune[finetune].value}</div>
-          </div>
+        {(isSelectedFinetune || isSelectedAnnotation < 9 || isSelectedFilter) && (
+          isSelectedFinetune
+            ? <div className="absolute flex top-10 left-0 right-0 z-10 justify-center items-center bg-base-200 border-error mt-2 p-4 shadow-lg gap-4">
+              <label className="block text-center">
+                {bgImageFinetune[finetune].title}
+              </label>
+              <input
+                type="range"
+                min={bgImageFinetune[finetune].min}
+                max={bgImageFinetune[finetune].max}
+                value={bgImageFinetune[finetune].value}
+                className="range range-xs [--range-fill:0]"
+                onChange={(e) => { handleRangeValueChange(e) }}
+                step={10}
+              />
+              <div className="text-center ml-5">{bgImageFinetune[finetune].value}</div>
+            </div>
+            : !isSelectedFilter
+              ? <ColorAndStrokeSettings
+                color={color}
+                width={strokeWidth}
+                bgColor={bgColor}
+                onColorChange={onColorChange}
+                onWidthChange={onWidthChange}
+                onBgColorChange={onBgColorChange}
+              />
+              : <FilterSettings
+                imageUrl={imageUrl || ''}
+                filter={filter}
+                onFilterChange={onFilterChange}
+              />
         )}
       </div>
 
