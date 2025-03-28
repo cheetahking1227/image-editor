@@ -34,12 +34,18 @@ function canvasPreview(
 }
 type ImageCropperProps = {
   imageSrc: string;
+  restoredCrop: Crop;
   onCropConfirm: (croppedDataUrl: string) => void;
+  setRestoredCrop: React.Dispatch<React.SetStateAction<Crop | undefined>>;
+  zoom: number;
 };
 
 const ImageCropper: React.FC<ImageCropperProps> = ({
   imageSrc,
+  restoredCrop,
   onCropConfirm,
+  setRestoredCrop,
+  zoom,
 }) => {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<Crop>();
@@ -48,14 +54,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
 
   const onImageLoad = (img: HTMLImageElement) => {
     imgRef.current = img;
-    const crop: Crop = {
-      unit: 'px',
-      x: 0,
-      y: 0,
-      width: img.width,
-      height: img.height,
-    };
-    setCrop(crop);
+    setCrop(restoredCrop);
   };
 
   const performCrop = useCallback(() => {
@@ -64,6 +63,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
       completedCrop &&
       previewCanvasRef.current
     ) {
+      setRestoredCrop(crop);
       canvasPreview(imgRef.current, previewCanvasRef.current, completedCrop);
       const dataUrl = previewCanvasRef.current.toDataURL('image/png');
       onCropConfirm(dataUrl);
@@ -75,7 +75,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
   }, [performCrop]);
 
   return (
-    <div style={{ padding: '1rem' }}>
+    <div>
       {imageSrc && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <ReactCrop
@@ -83,12 +83,17 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
             onChange={(c) => setCrop(c)}
             onComplete={(c) => setCompletedCrop(c)}
             keepSelection
+            ruleOfThirds
           >
             <img
               src={imageSrc}
               alt="Source"
               onLoad={(e) => onImageLoad(e.currentTarget)}
-              style={{ maxWidth: '100%' }}
+              style={{
+                maxWidth: '100%',
+                transform: `scale(${zoom})`,
+                transformOrigin: 'center center',
+              }}
             />
           </ReactCrop>
 

@@ -1,17 +1,19 @@
 import { fabric } from "fabric";
 import { RgbaColor } from "react-colorful";
 
-export const drawPen = (canvas: fabric.Canvas) => {
+export const drawPen = (canvas: fabric.Canvas, color: string, strokeWidth: number,) => {
   canvas.isDrawingMode = true;
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+  canvas.freeDrawingBrush.color = color;
+  canvas.freeDrawingBrush.width = strokeWidth;
 }
 
-export const drawLine = (canvas: fabric.Canvas, color: string, strokeWidth: number) => {
+export const drawLine = (canvas: fabric.Canvas, color: string, strokeWidth: number, isArrow = false) => {
   let isDrawing = false;
   let line: fabric.CustomLine | null = null;
   let startX = 0;
   let startY = 0;
-  console.log(color);
+
   canvas.on('mouse:down', (opt: any) => {
     const target = canvas.findTarget(opt.e, true);
     if (target) return; // Prevent drawing over existing object
@@ -29,6 +31,7 @@ export const drawLine = (canvas: fabric.Canvas, color: string, strokeWidth: numb
       evented: true,
       hasBorders: false,
       perPixelTargetFind: true,
+      isArrow: isArrow
     });
     canvas.add(line);
   });
@@ -212,210 +215,247 @@ export const drawEllipse = (canvas: fabric.Canvas, color: string, bgColor: RgbaC
   });
 }
 
-export const drawArrow = (canvas: fabric.Canvas, color: string, strokeWidth: number) => {
-  let isDrawing = false;
-  let arrowLine: fabric.CustomLine | null = null;
-  let arrowHead: fabric.Triangle | null = null;
-  let arrowGroup: fabric.Group | null = null;
-  let startX = 0;
-  let startY = 0;
-
-  canvas.on('mouse:down', (opt: any) => {
-    const target = canvas.findTarget(opt.e, true);
-    if (target) return;
-
-    const pointer = canvas.getPointer(opt.e);
-    isDrawing = true;
-    startX = pointer.x;
-    startY = pointer.y;
-
-    // Create line
-    const linePoint = [new fabric.Point(startX, startY), new fabric.Point(startX, startY)];
-    arrowLine = new fabric.CustomLine(linePoint, {
-      stroke: color,
-      strokeWidth: strokeWidth,
-      selectable: false,
-      evented: false,
-    });
-
-    // Create arrowhead (triangle)
-    arrowHead = new fabric.Triangle({
-      width: 10,
-      height: 12,
-      fill: color,
-      left: startX,
-      top: startY,
-      originX: 'center',
-      originY: 'center',
-      angle: 0,
-      selectable: false,
-      evented: false,
-    });
-
-    // Group line and arrowhead
-    arrowGroup = new fabric.Group([arrowLine, arrowHead], {
-      left: 0,
-      top: 0,
-      selectable: false,
-      evented: true,
-      hasBorders: false,
-      hasControls: false,
-      objectCaching: false,
-    });
-
-    canvas.add(arrowGroup);
-  });
-
-  canvas.on('mouse:move', (opt: any) => {
-    if (!isDrawing || !arrowLine || !arrowHead || !arrowGroup) return;
-
-    const pointer = opt.absolutePointer;
-    const linePoint = arrowLine.points;
-    if (linePoint) {
-      linePoint[1] = new fabric.Point(pointer.x, pointer.y);
-      arrowLine.set({ points: linePoint });
-      arrowLine.setCoords();
-      arrowLine._setPositionDimensions({});
-      arrowLine.dirty = true;
-    }
-    // const pointer = opt.absolutePointer;
-    // const x2 = pointer.x;
-    // const y2 = pointer.y;
-
-    // Update line
-    // arrowLine.set({ x2, y2 });
-
-    // Calculate angle for triangle
-    const dx = pointer.x - startX;
-    const dy = pointer.y - startY;
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-    // Update triangle position and rotation
-    arrowHead.set({
-      left: pointer.x,
-      top: pointer.y,
-      angle: angle + 90,
-    });
-
-    // Recalculate group bounds
-    // arrowGroup._calcBounds();
-    arrowGroup.setCoords();
-    console.log(`arrow group`, arrowGroup);
-    console.log(`line`, arrowLine)
-    canvas.renderAll();
-  });
-
-  canvas.on('mouse:up', () => {
-    if (arrowGroup) {
-      arrowGroup.set({
-        selectable: true,
-        evented: true,
-        hasControls: true,
-        hasBorders: true,
-      });
-      canvas.setActiveObject(arrowGroup);
-    }
-
-    isDrawing = false;
-    arrowLine = null;
-    arrowHead = null;
-    arrowGroup = null;
-  });
-
+interface Point {
+  x: number;
+  y: number;
 }
 
 export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: number) => {
-  // Match your existing styles
-  fabric.Object.prototype.transparentCorners = false;
-  fabric.Object.prototype.cornerColor = 'white';
-  fabric.Object.prototype.cornerStyle = 'circle';
-  fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
-  fabric.Object.prototype.cornerSize = 16;
+  let pts: Point[] = [],
+    polyShape: any,
+    nodeNum = 0,
+    nodes: fabric.Circle[] = [],
+    polyType: 'Polygon' | 'Polyline' = 'Polyline',
+    polyline: any,
+    polygon: any,
+    lastPt = 1,
+    poly = true,
+    btn = 'Polyline',
+    isDown = false,
+    mouse: Point,
+    objFill = '',
+    objStroke = color || 'white',
+    objStrokeWidth = strokeWidth || 2,
+    zindex: number,
+    redrawAll = false;
 
-  let isDrawing = false;
-  let points: fabric.Point[] = [];
-  let livePolyline: fabric.Polyline | null = null;
-  let previewLine: fabric.CustomLine | null = null;
-
-  const finishPolyline = () => {
-    if (!isDrawing || points.length < 2) return;
-
-    if (previewLine) {
-      canvas.remove(previewLine);
-      previewLine = null;
-    }
-
-    if (livePolyline) {
-      livePolyline.set({
-        selectable: true,
-        hasControls: true,
-        hasBorders: true,
-        evented: true,
-      });
-      // canvas.setActiveObject(livePolyline);
-      livePolyline = null;
-    }
-
-    isDrawing = false;
-    points = [];
-    canvas.requestRenderAll();
+  const Props = {
+    objectCaching: false,
+    hasControls: false,
+    hasBorders: true,
+    originX: 'center' as const,
+    originY: 'center' as const,
+    strokeUniform: true,
+    borderOpacityWhenMoving: 0,
+    cornerColor: 'magenta',
+    cornerStyle: 'circle' as const,
+    padding: 10,
+    borderDashArray: [4, 4],
   };
 
-  canvas.on('mouse:down', (opt: any) => {
-    const target = canvas.findTarget(opt.e, true);
-    if (target) return;
+  canvas.on('mouse:down', (e: any) => {
+    const target = canvas.findTarget(e.e, true);
 
-    const pointer = canvas.getPointer(opt.e);
-
-    if (!isDrawing) {
-      isDrawing = true;
-      points.push(new fabric.Point(pointer.x, pointer.y));
-      livePolyline = new fabric.Polyline(points, {
-        stroke: color,
-        strokeWidth: strokeWidth,
-        fill: 'rgba(255,255,255,0.05)',
-        selectable: false,
-        evented: false,
-        objectCaching: false,
-      });
-
-      canvas.add(livePolyline);
-    } else {
-      points.push(new fabric.Point(pointer.x, pointer.y));
-      if (livePolyline) {
-        livePolyline.set({ points });
-        canvas.requestRenderAll();
+    if ((btn === 'Polyline' || btn === 'Polygon') && poly === true && !target) {
+      if (pts.length > 1) {
+        pts.splice(-1, 1);
       }
+      polyline = new fabric.Polyline(pts, { ...Props, name: 'temp', fill: '', stroke: color || 'white', strokeWidth: strokeWidth || 2 });
+      canvas.add(polyline);
+      polyline.points[pts.length] = { x: parseInt(mouse.x.toString()), y: parseInt(mouse.y.toString()) };
+      lastPt++;
+      isDown = true;
+    }
+
+    if ((e.target && !isDown && e.target.name === 'poly') || e.target == null) {
+      clearNodes();
     }
   });
 
-  canvas.on('mouse:move', (opt: any) => {
-    if (!isDrawing || points.length === 0) return;
-
-    const pointer = canvas.getPointer(opt.e);
-    const last = points[points.length - 1];
-
-    if (previewLine) canvas.remove(previewLine);
-
-    previewLine = new fabric.CustomLine([new fabric.Point(last.x, last.y), new fabric.Point(pointer.x, pointer.y)], {
-      stroke: color,
-      strokeWidth: strokeWidth,
-      selectable: false,
-      evented: false,
-    });
-    canvas.setActiveObject(previewLine);
-
-    canvas.add(previewLine);
-    canvas.requestRenderAll();
+  canvas.on('mouse:move', (e: any) => {
+    mouse = canvas.getPointer(e);
+    if (poly && isDown) {
+      polyline.points[lastPt - 1] = { x: mouse.x, y: mouse.y };
+      canvas.renderAll();
+    }
   });
 
-  const upperCanvasEl = (canvas as any).upperCanvasEl as HTMLCanvasElement;
-  upperCanvasEl.addEventListener('dblclick', finishPolyline);
+  canvas.on('object:moving', (e: any) => {
+    if (e.target && e.target.name === 'node') {
+      isDown = false;
+      polyShape.points[e.target.nodeNum] = {
+        x: e.target.getCenterPoint().x,
+        y: e.target.getCenterPoint().y,
+      };
+    }
+  });
+
+  canvas.on('mouse:dblclick', (e) => {
+    if (btn === 'Polyline' || btn === 'Polygon') {
+      canvas.getObjects().forEach((i) => {
+        if (i.name === 'temp') canvas.remove(i);
+      });
+      objFill = `#${Math.random().toString(16).slice(-6)}`;
+      makePolygon(true);
+      addNodes(polyShape);
+      canvas.add(...nodes);
+      info();
+    }
+    if (e.target && !poly && e.target.name === 'poly') {
+      addNodes(e.target);
+      canvas.add(...nodes);
+      info();
+      canvas.discardActiveObject().renderAll();
+    }
+    canvas.renderAll();
+    isDown = false;
+    lastPt = 1;
+    pts = [];
+  });
+
+  canvas.on('object:modified', (e) => {
+    if (e.target && !poly && (e.target.name === 'poly' || e.target.name === 'node')) {
+      addNodes(polyShape);
+      pts = [];
+      polyShape.get('points').forEach((_point: any, i: number) => {
+        pts[i] = { x: nodes[i].left!, y: nodes[i].top! };
+      });
+      polyShape.set({ redraw: true });
+      objFill = polyShape.fill;
+      objStroke = polyShape.stroke;
+      objStrokeWidth = polyShape.strokeWidth;
+      zindex = canvas.getObjects().indexOf(polyShape);
+      makePolygon(true);
+      polyShape.moveTo(zindex);
+      addNodes(polyShape);
+      canvas.add(...nodes);
+      info();
+    }
+  });
+
+  canvas.on('selection:created', () => {
+    if (canvas.getActiveObjects().length > 1) {
+      redrawAll = true;
+      clearNodes();
+    }
+  });
+
+  canvas.on('selection:cleared', () => {
+    if (redrawAll) {
+      redrawAll = false;
+      redrawAllPolys();
+    }
+  });
+
+  function clearNodes() {
+    nodes.forEach((node) => canvas.remove(node));
+  }
+
+  function redrawAllPolys() {
+    canvas.getObjects().forEach((obj: any) => {
+      if (obj.name === 'poly') {
+        addNodes(obj);
+        pts = [];
+        obj.get('points').forEach((_point: any, i: number) => {
+          pts[i] = { x: nodes[i].left!, y: nodes[i].top! };
+        });
+        obj.set({ redraw: true });
+        zindex = canvas.getObjects().indexOf(obj);
+        if (obj.pType) polyType = obj.pType;
+        objFill = obj.fill;
+        objStroke = obj.stroke;
+        objStrokeWidth = obj.strokeWidth;
+        makePolygon(true);
+        obj.moveTo(zindex);
+      }
+    });
+  }
+
+  function makePolygon(val: boolean) {
+    if (!val) return;
+    canvas.getObjects().forEach((obj: any) => {
+      if (obj.redraw && obj.name === 'poly') {
+        canvas.setActiveObject(obj);
+        canvas.remove(canvas.getActiveObject()!);
+      }
+    });
+    const shapeOptions: fabric.IObjectOptions & { name?: string; redraw?: boolean; pType?: string } = {
+      ...Props,
+      name: 'poly',
+      redraw: false,
+      objectCaching: false,
+    };
+
+    polyShape = new fabric[polyType](pts, shapeOptions);
+    objFill = polyType === 'Polygon' ? objFill : '';
+    polyShape.set({
+      pType: polyType,
+      hasControls: true,
+      fill: objFill,
+      alphaFill: 1,
+      stroke: objStroke,
+      strokeWidth: objStrokeWidth,
+    });
+    canvas.add(polyShape);
+
+    polyShape.on('mousedown', (e: any) => {
+      polyShape = e.target;
+      polyType = e.target.get('type') === 'polyline' ? 'Polyline' : 'Polygon';
+    });
+  }
+
+  function addNodes(polyShape: any) {
+    clearNodes();
+    const matrix = polyShape.calcTransformMatrix();
+    nodeNum = 0;
+    const transformedpts = polyShape
+      .get('points')
+      .map((p: Point) => new fabric.Point(p.x - polyShape.pathOffset.x, p.y - polyShape.pathOffset.y))
+      .map((p: fabric.Point) => fabric.util.transformPoint(p, matrix));
+
+    nodes = transformedpts.map((p: fabric.Point) => {
+      return new fabric.Circle({
+        ...Props,
+        name: 'node',
+        nodeNum: nodeNum++,
+        left: p.x,
+        top: p.y,
+        radius: 8,
+        stroke: "rgba(92, 178, 209, 1)",
+        fill: 'white',
+        hoverCursor: 'pointer',
+        selectable: false,
+        opacity: 0.8,
+      });
+    });
+
+    nodes.forEach((node) => {
+      node.on('mouseover', () => {
+        node.selectable = true;
+        node.set('fill', 'white');
+        canvas.renderAll();
+      });
+      node.on('mouseout', () => {
+        node.selectable = false;
+        node.set('fill', 'white');
+        canvas.renderAll();
+      });
+    });
+  }
+
+  function info() {
+    // Add info handling here if needed
+  }
+
+  function resetToolBar(tool: string) {
+    btn = tool;
+    // Add toolbar reset logic if needed
+  }
 }
 
 export const addText = (canvas: fabric.Canvas) => {
   if (!canvas) return;
-
+  initEvent(canvas);
   fabric.Object.prototype.transparentCorners = false;
   fabric.Object.prototype.cornerColor = 'white';
   fabric.Object.prototype.cornerStyle = 'circle';
@@ -440,6 +480,7 @@ export const addText = (canvas: fabric.Canvas) => {
 export const addImage = (canvas: fabric.Canvas, event: React.ChangeEvent<HTMLInputElement>) => {
   const file = event.target.files?.[0];
   if (!file || !canvas) return;
+  initEvent(canvas);
 
   fabric.Object.prototype.transparentCorners = false;
   fabric.Object.prototype.cornerColor = 'white';
@@ -475,35 +516,4 @@ export const initEvent = (canvas: fabric.Canvas) => {
   canvas.off("mouse:down");
   canvas.off("mouse:move");
   canvas.off("mouse:up");
-}
-
-export const getCroppedImg = (imageSrc: string, pixelCrop: any): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.src = imageSrc;
-    image.crossOrigin = 'anonymous';
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = pixelCrop.width;
-      canvas.height = pixelCrop.height;
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) return reject("No 2D context");
-
-      ctx.drawImage(
-        image,
-        pixelCrop.x,
-        pixelCrop.y,
-        pixelCrop.width,
-        pixelCrop.height,
-        0,
-        0,
-        pixelCrop.width,
-        pixelCrop.height
-      );
-
-      resolve(canvas.toDataURL("image/jpeg"));
-    };
-    image.onerror = reject;
-  });
 }

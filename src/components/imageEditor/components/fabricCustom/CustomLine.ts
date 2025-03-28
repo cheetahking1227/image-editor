@@ -12,6 +12,7 @@ fabric.CustomLine = fabric.util.createClass(fabric.Polyline, {
   allLineObjects: undefined,
   isSnappedLine: false,
   isSplittedPolygon: false,
+  isArrow: false,
 
   initialize: function (
     points: fabric.Point[],
@@ -44,6 +45,34 @@ fabric.CustomLine = fabric.util.createClass(fabric.Polyline, {
 
   _render: function (ctx: CanvasRenderingContext2D) {
     this.callSuper("_render", ctx);
+
+    if (this.isArrow) {
+      const points = this.points;
+      if (!points || points.length < 2) return;
+
+      const last = points[points.length - 1];
+      const prev = points[points.length - 2];
+
+      const dx = last.x - prev.x;
+      const dy = last.y - prev.y;
+      const angle = Math.atan2(dy, dx);
+
+      const triangleLength = 15 + this.strokeWidth * 3;
+      const triangleWidth = 20 + this.strokeWidth * 4;
+
+      ctx.save();
+      ctx.translate(last.x - this.pathOffset.x, last.y - this.pathOffset.y);
+      ctx.rotate(angle);
+
+      ctx.beginPath();
+      ctx.moveTo(this.strokeWidth, 0);
+      ctx.lineTo(-triangleLength, triangleWidth / 2);
+      ctx.lineTo(-triangleLength, -triangleWidth / 2);
+      ctx.closePath();
+      ctx.fillStyle = this.stroke || "black";
+      ctx.fill();
+      ctx.restore();
+    }
   },
 
   _addCustomControls() {

@@ -67,7 +67,7 @@ export default function ColorAndStrokeSettings({ color, width, onColorChange, on
         onChange={(e) => onWidthChange(Number(e.target.value))}
         className="range range-xs [--range-fill:0]"
       />
-      <div className="text-sm text-center">{width}px</div>
+      <div className="text-sm text-center w-10">{width}px</div>
 
     </div>
   );

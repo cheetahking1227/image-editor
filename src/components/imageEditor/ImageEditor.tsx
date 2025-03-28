@@ -1,11 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   FolderOpen,
-  Undo2,
-  MinusCircle,
-  PlusCircle,
-  Redo2,
-  Crop,
+  ZoomIn,
+  ZoomOut,
+  Crop as CropIcon,
   PenLine,
   Slash,
   RectangleHorizontal,
@@ -15,11 +13,9 @@ import {
   Type,
   Image as InsertImage,
   SlidersHorizontal,
-  Blend,
+  Sparkles,
   Check,
   X,
-  RefreshCw,
-  Save,
   Sun,
   Contrast,
   Eclipse,
@@ -29,15 +25,13 @@ import {
   Droplet,
 } from 'lucide-react';
 import { fabric } from "fabric";
-import ImageCropper from "./components/ImageCropper";
+import { CropperRef, Cropper, CropperState, CoreSettings, Coordinates } from 'react-advanced-cropper';
 import { RgbaColor } from "react-colorful";
-import 'react-image-crop/dist/ReactCrop.css';
 import {
   drawPen,
   drawLine,
   drawRectangle,
   drawEllipse,
-  drawArrow,
   drawPath,
   addText,
   addImage,
@@ -47,6 +41,10 @@ import { BgImageFinetuneItem } from "../../types";
 import { BG_IMAGE_FINETUNE } from "../../Constants";
 import ColorAndStrokeSettings from "./components/ColorAndStrokeSettings";
 import FilterSettings from "./components/FilterSettings";
+import FinetuneSettings from "./components/FinetuneSettings";
+import 'react-advanced-cropper/dist/style.css'
+import 'react-advanced-cropper/dist/themes/bubble.css';
+import { setSelectionRange } from "@testing-library/user-event/dist/utils";
 
 const annotations = [
   { label: 'Pen', icon: <PenLine size={20} /> },
@@ -65,12 +63,14 @@ const ImageEditor: React.FC = () => {
   const addImageInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
+  const cropperRef = useRef<CropperRef>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [croppedImageUrl, setCroppedImageUrl] = useState<string>();
+  const [coordinates, setCoordinates] = useState<Coordinates>();
   const [viewMode, setViewMode] = useState<number>(1)
-  const [canvasWidth, setCanvasWidth] = useState<number>(0);
-  const [canvasHeight, setCanvasHeight] = useState<number>(0);
-  const [zoom, setZoom] = useState<number>(1);
-  const [isWorking, setIsWorking] = useState<boolean>(false);
+  const [originImageWidth, setOriginImageWidth] = useState<number>(0);
+  const [originImageHeight, setOriginImageHeight] = useState<number>(0);
+  const [isCropWorking, setIsCropWorking] = useState<boolean>(false);
   const [isSelectedFinetune, setIsSelectedFinetune] = useState<boolean>(false);
   const [finetune, setFinetune] = useState<number>(0);
   const [rangeValue, setRangeValue] = useState<number>(0);
@@ -82,8 +82,6 @@ const ImageEditor: React.FC = () => {
   const [annotation, setAnnotation] = useState<string>('');
   const [isSelectedFilter, setIsSelectedFilter] = useState<boolean>(false);
   const [filter, setFilter] = useState<string>('');
-
-  // const selectedIcon = annotations.find((tool) => tool.label === annotation)?.icon;
 
   useEffect(() => {
     if (canvasRef.current && !fabricCanvasRef.current) {
@@ -98,10 +96,10 @@ const ImageEditor: React.FC = () => {
   }, [annotation, color, bgColor, strokeWidth]);
 
   useEffect(() => {
-    drawImage(imageUrl || '', zoom);
-  }, [filter]);
+    drawImage(croppedImageUrl || '');
+  }, [imageUrl, croppedImageUrl, filter,]);
 
-  const drawImage = (url: string, zoom: number = 1) => {
+  const drawImage = (url: string) => {
     const filters: fabric.IBaseFilter[] = [];
 
     bgImageFinetune.forEach((item, index) => {
@@ -144,25 +142,19 @@ const ImageEditor: React.FC = () => {
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
       if (!img) return;
-      const maxWidth = window.innerWidth - 80;  // leave margin
-      const maxHeight = (window.innerHeight - 130) * 5 / 6; // leave room for toolbar, etc.
-
-      let targetWidth = img.width;
-      let targetHeight = img.height;
-
+      const maxWidth = window.innerWidth - 80;
+      const maxHeight = (window.innerHeight - 130) * 5 / 6;
       // Scale down to fit screen
       const widthRatio = maxWidth / img.width;
       const heightRatio = maxHeight / img.height;
       const scale = Math.min(widthRatio, heightRatio, 1); // Don’t upscale
 
-      targetWidth = img.width * scale * zoom;
-      targetHeight = img.height * scale * zoom;
+      let targetWidth = img.width * scale;
+      let targetHeight = img.height * scale;
 
       // Set canvas size
       canvas.setWidth(targetWidth);
       canvas.setHeight(targetHeight);
-      setCanvasWidth(targetWidth);
-      setCanvasHeight(targetHeight);
 
       const fabricImage = new fabric.Image(img)
       fabricImage.scaleToWidth(targetWidth);
@@ -170,19 +162,9 @@ const ImageEditor: React.FC = () => {
       fabricImage.applyFilters(filters);
 
       canvas.backgroundImage = fabricImage;
-      canvas.renderAll()
+      canvas.requestRenderAll()
     }
   }
-  // Draw image on canvas
-  useEffect(() => {
-    drawImage(imageUrl || '');
-  }, [imageUrl]);
-
-  useEffect(() => {
-    const canvas = fabricCanvasRef.current;
-    if (!canvas) return;
-    drawImage(imageUrl || '', zoom);
-  }, [zoom]);
 
   const handleBgImageFileOpen = () => {
     bgImageInputRef.current?.click();
@@ -192,31 +174,56 @@ const ImageEditor: React.FC = () => {
     const file = event.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.src = url;
+      img.onload = () => {
+        if (!img) return;
+        const maxWidth = window.innerWidth - 80;
+        const maxHeight = (window.innerHeight - 130) * 5 / 6;
+        // Scale down to fit screen
+        const widthRatio = maxWidth / img.width;
+        const heightRatio = maxHeight / img.height;
+        const scale = Math.min(widthRatio, heightRatio, 1); // Don’t upscale
+
+        let originWidth = img.width * scale;
+        let originHeight = img.height * scale;
+        setOriginImageWidth(originWidth);
+        setOriginImageHeight(originHeight);
+      }
       setImageUrl(url);
+      setCroppedImageUrl(url);
     }
   };
 
   const handleImageCropping = () => {
-    setIsWorking(true);
+    setIsCropWorking(true);
     if (viewMode === 1 && fabricCanvasRef.current) {
       fabricCanvasRef.current.dispose();
       fabricCanvasRef.current = null;
+      setIsSelectedFinetune(false);
+      setIsSelectedAnnotation(9);
+      setIsSelectedFilter(false);
       setViewMode(2);
     } else if (viewMode === 2) {
-      (window as any).cropperPerformCrop?.(); // trigger actual cropping
+      // (window as any).cropperPerformCrop?.(); // trigger actual cropping
     }
   };
 
-  const showCroppedImage = async (croppedDataUrl: string) => {
-    setIsWorking(false);
-    setImageUrl(croppedDataUrl); // Reload image into fabric.js
-    setViewMode(1);
+  const showCroppedImage = () => {
+    if (cropperRef.current) {
+      setIsCropWorking(false);
+      setViewMode(1);
+      setCoordinates(cropperRef.current.getCoordinates()!);
+      setCroppedImageUrl(cropperRef.current.getCanvas()?.toDataURL())
+    } else {
+      handleCancel();
+    }
   };
 
   const handleCancel = () => {
     setViewMode(1);
-    setIsWorking(false);
-    drawImage(imageUrl || '');
+    setIsCropWorking(false);
+    drawImage(croppedImageUrl || '');
     setIsSelectedFinetune(false);
     setIsSelectedAnnotation(9);
     setIsSelectedFilter(false);
@@ -234,7 +241,7 @@ const ImageEditor: React.FC = () => {
     initEvent(canvas);
     switch (annotation) {
       case 'Pen':
-        drawPen(canvas);
+        drawPen(canvas, color, strokeWidth);
         break;
       case 'Line':
         drawLine(canvas, color, strokeWidth);
@@ -246,7 +253,7 @@ const ImageEditor: React.FC = () => {
         drawEllipse(canvas, color, bgColor, strokeWidth);
         break;
       case 'Arrow':
-        drawArrow(canvas, color, strokeWidth);
+        drawLine(canvas, color, strokeWidth, true);
         break;
       case 'Path':
         drawPath(canvas, color, strokeWidth);
@@ -260,64 +267,49 @@ const ImageEditor: React.FC = () => {
     setAnnotation(value);
   }
 
-  const handleZoomChange = (value: number) => {
-    setZoom(Math.round((zoom + value) * 100) / 100);
-  }
-
   const handleFinetuneChange = (value: number) => {
     setFinetune(value);
   }
 
   const applyImage = () => {
-    drawImage(imageUrl || '', zoom)
-    // const filters: fabric.IBaseFilter[] = [];
-
-    // bgImageFinetune.forEach((item, index) => {
-    //   switch (index) {
-    //     case 0:
-    //       filters.push(new fabric.Image.filters.Brightness({ brightness: item.value / 100 }));
-    //       break;
-    //     case 1:
-    //       filters.push(new fabric.Image.filters.Contrast({ contrast: item.value / 100 }));
-    //       break;
-    //     case 2:
-    //       filters.push(new fabric.Image.filters.HueRotation({ rotation: item.value / 100 }));
-    //       break;
-    //     case 3:
-    //       filters.push(new fabric.Image.filters.Saturation({ saturation: item.value / 100 }));
-    //       break;
-    //     case 4:
-    //       filters.push(new fabric.Image.filters.Exposure({ exposure: item.value / 100 }));
-    //       break;
-    //     case 5:
-    //       filters.push(new fabric.Image.filters.Opacity({ opacity: item.value / 100 }));
-    //       break;
-    //     case 6:
-    //       filters.push(new fabric.Image.filters.Blur({ blur: item.value / 100 }));
-    //       break;
-    //     default:
-    //       break;
-    //   }
-    // })
-
-    // const img = new Image();
-    // img.src = imageUrl!;
-    // img.onload = () => {
-    //   const canvas = fabricCanvasRef.current;
-    //   if (!canvas) return;
-    //   if (!img) return;
-    //   const fabricImage = new fabric.Image(img)
-
-    //   fabricImage.applyFilters(filters);
-    //   canvas.backgroundImage = fabricImage;
-    //   canvas.renderAll()
-    // }
+    drawImage(croppedImageUrl || '')
   };
 
   const handleRangeValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setRangeValue(parseInt(e.target.value));
     bgImageFinetune[finetune].value = parseInt(e.target.value);
     applyImage();
+  }
+
+  const handleAnnotationClick = (index: number, label?: string) => {
+    setIsSelectedAnnotation(index);
+    setViewMode(1);
+    setIsCropWorking(false);
+    setIsSelectedFilter(false);
+    drawImage(croppedImageUrl || '');
+    if (index === 7) {
+      setAnnotation('');
+      addImageInputRef.current?.click();
+    } else if (index === 6) {
+      setAnnotation('');
+      addText(fabricCanvasRef.current!);
+    } else {
+      handleAnnotationSelect(label!);
+    }
+  }
+
+  const handleFinetuneClick = () => {
+    setIsSelectedFinetune(true);
+    setViewMode(1);
+    setIsCropWorking(false);
+    drawImage(croppedImageUrl || '');
+  }
+
+  const handleFilterClick = () => {
+    setIsSelectedFilter(true);
+    setViewMode(1);
+    setIsCropWorking(false);
+    drawImage(croppedImageUrl || '');
   }
 
   const onColorChange = (color: string) => {
@@ -344,48 +336,45 @@ const ImageEditor: React.FC = () => {
           <button className="btn btn-ghost btn-sm" title="Open" onClick={handleBgImageFileOpen}>
             <FolderOpen size={20} />
           </button>
-          {/* <button className="btn btn-ghost btn-sm" title="Undo">
-            <Undo2 size={20} />
-          </button>
-          <button className="btn btn-ghost btn-sm" title="Redo">
-            <Redo2 size={20} />
-          </button> */}
-          <button className="btn btn-ghost btn-sm" title="Zoom Out" disabled={zoom === 1 ? true : false} onClick={() => { handleZoomChange(-0.1) }}>
-            <MinusCircle size={20} />
-          </button>
-          <button className="btn btn-ghost btn-sm" title="Zoom In" disabled={zoom === 3 ? true : false} onClick={() => { handleZoomChange(0.1) }}>
-            <PlusCircle size={20} />
-          </button>
         </div>
-
         {!isSelectedFinetune
           ? <div className="flex gap-2">
-            <button className="btn btn-ghost btn-sm" title="Crop and Transform" onClick={handleImageCropping}>
-              <Crop size={20} />
-            </button>
+            <div className="join">
+              <button className="btn btn-ghost btn-sm" title="Zoom In" disabled={!imageUrl} onClick={() => { cropperRef.current?.zoomImage(1.1) }}>
+                <ZoomIn size={20} />
+              </button>
+              <button className="btn btn-ghost btn-sm" title="Zoom Out" disabled={!imageUrl} onClick={() => { cropperRef.current?.zoomImage(1 / 1.1) }}>
+                <ZoomOut size={20} />
+              </button>
+            </div>
+            <div className="divider divider-horizontal"></div>
             <div className="join">
               {
                 annotations.map((item, index) => (
                   item.label === 'Add Image'
-                    ? <button key={index} className="btn btn-ghost btn-sm" title={item.label} onClick={() => { addImageInputRef.current?.click(); setIsSelectedAnnotation(index) }}>
+                    ? <button key={index} className={`btn btn-ghost btn-sm ${item.label === annotation ? 'btn-active' : ''}`} title={item.label} disabled={!imageUrl} onClick={() => { handleAnnotationClick(index) }}>
                       {item.icon}
                     </button>
                     : item.label === 'Add Text'
-                      ? <button key={index} className="btn btn-ghost btn-sm" title={item.label} onClick={() => { addText(fabricCanvasRef.current!); setIsSelectedAnnotation(index) }}>
+                      ? <button key={index} className={`btn btn-ghost btn-sm ${item.label === annotation ? 'btn-active' : ''}`} title={item.label} disabled={!imageUrl} onClick={() => { handleAnnotationClick(index) }}>
                         {item.icon}
                       </button>
-                      : <button key={index} className="btn btn-ghost btn-sm" title={item.label} onClick={() => { handleAnnotationSelect(item.label); setIsSelectedAnnotation(index) }}>
+                      : <button key={index} className={`btn btn-ghost btn-sm ${item.label === annotation ? 'btn-active' : ''}`} title={item.label} disabled={!imageUrl} onClick={() => { handleAnnotationClick(index, item.label) }}>
                         {item.icon}
                       </button>
                 ))
               }
             </div>
+            <div className="divider divider-horizontal"></div>
             <div className="join">
-              <button className="btn btn-ghost btn-sm" title="Finetune" onClick={() => { setIsSelectedFinetune(true) }}>
+              <button className="btn btn-ghost btn-sm" title="Crop and Transform" disabled={!imageUrl} onClick={handleImageCropping}>
+                <CropIcon size={20} />
+              </button>
+              <button className="btn btn-ghost btn-sm" title="Finetune" disabled={!imageUrl} onClick={() => { handleFinetuneClick() }}>
                 <SlidersHorizontal size={20} />
               </button>
-              <button className="btn btn-ghost btn-sm" title="Filter" onClick={() => { setIsSelectedFilter(true) }}>
-                <Blend size={20} />
+              <button className="btn btn-ghost btn-sm" title="Filter" disabled={!imageUrl} onClick={() => { handleFilterClick() }}>
+                <Sparkles size={20} />
               </button>
             </div>
           </div>
@@ -397,13 +386,13 @@ const ImageEditor: React.FC = () => {
               <Contrast size={20} />
             </button>
             <button className="btn btn-ghost btn-sm" title="Hue" onClick={() => { handleFinetuneChange(2) }}>
-              <Eclipse size={20} />
+              <Target size={20} />
             </button>
             <button className="btn btn-ghost btn-sm" title="Saturation" onClick={() => { handleFinetuneChange(3) }}>
               <Pipette size={20} />
             </button>
             <button className="btn btn-ghost btn-sm" title="Exposure" onClick={() => { handleFinetuneChange(4) }}>
-              <Target size={20} />
+              <Eclipse size={20} />
             </button>
             <button className="btn btn-ghost btn-sm" title="Opacity" onClick={() => { handleFinetuneChange(5) }}>
               <CircleDashed size={20} />
@@ -414,17 +403,11 @@ const ImageEditor: React.FC = () => {
           </div>
         }
         <div className="flex">
-          <button className="btn btn-ghost btn-sm" title="Apply" onClick={handleImageCropping}>
+          <button className="btn btn-ghost btn-sm" title="Apply" onClick={showCroppedImage}>
             <Check size={20} />
           </button>
           <button className="btn btn-ghost btn-sm" title="Discard" onClick={handleCancel}>
             <X size={20} />
-          </button>
-          <button className="btn btn-ghost btn-sm" title="Reset">
-            <RefreshCw size={20} />
-          </button>
-          <button className="btn btn-ghost btn-sm" title="Save">
-            <Save size={20} />
           </button>
         </div>
         <input
@@ -443,21 +426,11 @@ const ImageEditor: React.FC = () => {
         />
         {(isSelectedFinetune || isSelectedAnnotation < 9 || isSelectedFilter) && (
           isSelectedFinetune
-            ? <div className="absolute flex top-10 left-0 right-0 z-10 justify-center items-center bg-base-200 border-error mt-2 p-4 shadow-lg gap-4">
-              <label className="block text-center">
-                {bgImageFinetune[finetune].title}
-              </label>
-              <input
-                type="range"
-                min={bgImageFinetune[finetune].min}
-                max={bgImageFinetune[finetune].max}
-                value={bgImageFinetune[finetune].value}
-                className="range range-xs [--range-fill:0]"
-                onChange={(e) => { handleRangeValueChange(e) }}
-                step={10}
-              />
-              <div className="text-center ml-5">{bgImageFinetune[finetune].value}</div>
-            </div>
+            ? <FinetuneSettings
+              finetune={finetune}
+              bgImageFinetune={bgImageFinetune}
+              handleRangeValueChange={handleRangeValueChange}
+            />
             : !isSelectedFilter
               ? <ColorAndStrokeSettings
                 color={color}
@@ -468,7 +441,7 @@ const ImageEditor: React.FC = () => {
                 onBgColorChange={onBgColorChange}
               />
               : <FilterSettings
-                imageUrl={imageUrl || ''}
+                imageUrl={croppedImageUrl || ''}
                 filter={filter}
                 onFilterChange={onFilterChange}
               />
@@ -487,136 +460,21 @@ const ImageEditor: React.FC = () => {
                 }}
               />
             </div>
-            : <div className="flex w-full h-full justify-center items-center" style={{ width: canvasWidth, height: canvasHeight, }}>
-              <ImageCropper imageSrc={(imageUrl) || ''} onCropConfirm={showCroppedImage} />
+            : <div className="flex w-full h-full justify-center items-center" style={{ width: originImageWidth, height: originImageHeight, }}>
+              {/* <ImageCropper imageSrc={(imageUrl) || ''} onCropConfirm={showCroppedImage} restoredCrop={restoredCrop!} setRestoredCrop={setRestoredCrop} zoom={zoom} /> */}
+              <Cropper
+                ref={cropperRef}
+                className={'cropper'}
+                src={imageUrl}
+                defaultCoordinates={coordinates}
+                stencilProps={{
+                  grid: true
+                }}
+              />
             </div>
         }
       </div>
     </div>
-    // <Paper elevation={3} sx={{ m: 2, overflow: "hidden" }}>
-    //   {/* Top Toolbar */}
-    //   <Toolbar variant="dense" sx={{ bgcolor: "#f5f5f5" }}>
-    //     <IconButton onClick={handleFileOpen}><FolderOpen /></IconButton>
-    //     {/* <IconButton><Undo /></IconButton>
-    //     <IconButton><Redo /></IconButton>
-    //     <IconButton><RemoveCircleOutline /></IconButton>
-    //     <IconButton><AddCircleOutline /></IconButton> */}
-    //     <Box flexGrow={1} />
-    //     <IconButton onClick={handleCrop}><CropIcon /></IconButton>
-    //     <FormControl sx={{ m: 1, minWidth: 60 }} size="small">
-    //       <Select
-    //         labelId="demo-simple-select-standard-label"
-    //         id="demo-simple-select-standard"
-    //         displayEmpty
-    //         value={annotation}
-    //         onChange={handleAnnotationChange}
-    //         renderValue={() => (
-    //           <Box display="flex" alignItems="center">
-    //             {selectedIcon}
-    //           </Box>
-    //         )}
-    //       >
-    //         {annotations.map((item) => (
-    //           item.label === 'Add Image'
-    //             ? <MenuItem key={item.label} value={item.label} onClick={() => { addImageInputRef.current?.click() }}>
-    //               <ListItemIcon>{item.icon}</ListItemIcon>
-    //               <ListItemText>{item.label}</ListItemText>
-    //             </MenuItem>
-    //             : item.label === 'Add Text'
-    //               ? <MenuItem key={item.label} value={item.label} onClick={() => { addText(fabricCanvasRef.current!) }}>
-    //                 <ListItemIcon>{item.icon}</ListItemIcon>
-    //                 <ListItemText>{item.label}</ListItemText>
-    //               </MenuItem>
-    //               : <MenuItem key={item.label} value={item.label}>
-    //                 <ListItemIcon>{item.icon}</ListItemIcon>
-    //                 <ListItemText>{item.label}</ListItemText>
-    //               </MenuItem>
-    //         ))}
-    //         {/* <MenuItem value={'Pen'}><Edit /> Pen</MenuItem>
-    //         <MenuItem value={'Line'}>Line</MenuItem>
-    //         <MenuItem value={'Rectangle'}><Crop54 /> Rectangle</MenuItem>
-    //         <MenuItem value={'Ellipse'}><CircleOutlined /> Ellipse</MenuItem> */}
-    //       </Select>
-    //     </FormControl>
-    //     <Box flexGrow={1} />
-    //     {
-    //       isWorking && (<>
-    //         <IconButton onClick={handleCrop}><Check /></IconButton>
-    //         <IconButton onClick={cancelCrop}><Close /></IconButton>
-    //       </>)
-    //     }
-    //     {/* <IconButton><Loop /></IconButton> */}
-    //     <IconButton><Save /></IconButton>
-
-    //     {/* Hidden File Input */}
-    //     <input
-    //       type="file"
-    //       accept="image/*"
-    //       ref={bgImageInputRef}
-    //       onChange={handleFileChange}
-    //       style={{ display: "none" }}
-    //     />
-    //     <input
-    //       type="file"
-    //       accept="image/*"
-    //       ref={addImageInputRef}
-    //       onChange={handleImageAdd}
-    //       style={{ display: "none" }}
-    //     />
-
-    //   </Toolbar>
-
-    //   {/* Canvas Preview Area */}
-
-    //   <div style={{ width: 1880, height: 800 }}>
-    //     {
-    //       // imageObj !== null
-    //       <Box
-    //         display="flex"
-    //         justifyContent="center"
-    //         alignItems="center"
-    //         minHeight="80vh"
-    //         bgcolor="#fff"
-    //       >
-    //         {viewMode === 1 ? (
-    //           <Box
-    //             bgcolor="#fff"
-    //             sx={{
-    //               width: canvasWidth,
-    //               height: canvasHeight,
-    //               display: "flex",
-    //               justifyContent: "center",
-    //               alignItems: "center",
-    //             }}
-    //           >
-    //             <canvas
-    //               ref={canvasRef}
-    //               style={{
-    //                 border: "1px solid #f00",
-    //               }}
-    //             />
-    //           </Box>
-    //         ) : (
-    //           <Box
-    //             position="relative"
-    //             bgcolor="#fff"
-    //             border="2px solid #fff"
-    //             sx={{
-    //               width: canvasWidth,
-    //               height: canvasHeight,
-    //               display: "flex",
-    //               justifyContent: "center",
-    //               alignItems: "center",
-    //             }}
-    //           >
-    //             <ImageCropper imageSrc={(imageUrl) || ''} onCropConfirm={showCroppedImage} />
-    //           </Box>
-    //         )}
-    //       </Box>
-    //       // : <></>
-    //     }
-    //   </div>
-    // </Paper>
   );
 };
 

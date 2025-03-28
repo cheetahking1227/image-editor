@@ -228,5 +228,11 @@ declare namespace fabric {
     dimObjects?: {};
   }
 
+  interface ICircleOptions extends IObjectOptions {
+    name?: string;
+    nodeNum?: number;
+  }
+
+
   type CustomCanvas = fabric.Canvas & fabric.extendCanvas;
 }
