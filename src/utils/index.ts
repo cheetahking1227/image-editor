@@ -242,7 +242,7 @@ export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: numb
   const Props = {
     objectCaching: false,
     hasControls: false,
-    hasBorders: true,
+    hasBorders: false,
     originX: 'center' as const,
     originY: 'center' as const,
     strokeUniform: true,
@@ -250,7 +250,7 @@ export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: numb
     cornerColor: 'magenta',
     cornerStyle: 'circle' as const,
     padding: 10,
-    borderDashArray: [4, 4],
+    // borderDashArray: [4, 4],
   };
 
   canvas.on('mouse:down', (e: any) => {
@@ -307,10 +307,8 @@ export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: numb
       info();
       canvas.discardActiveObject().renderAll();
     }
-    canvas.renderAll();
-    isDown = false;
-    lastPt = 1;
-    pts = [];
+    resetToolBar('cursor'); canvas.renderAll();
+    isDown = false; poly = false; lastPt = 1; btn = 'Cursor';
   });
 
   canvas.on('object:modified', (e) => {
@@ -453,7 +451,7 @@ export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: numb
   }
 }
 
-export const addText = (canvas: fabric.Canvas) => {
+export const addText = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor) => {
   if (!canvas) return;
   initEvent(canvas);
   fabric.Object.prototype.transparentCorners = false;
@@ -466,7 +464,8 @@ export const addText = (canvas: fabric.Canvas) => {
     left: 150,
     top: 150,
     fontSize: 24,
-    fill: '#FFF',
+    fill: color,
+    backgroundColor: `rgba(${bgColor.r},${bgColor.g},${bgColor.b},${bgColor.a})`,
     fontFamily: 'Arial',
     editable: true,
     selectable: true,

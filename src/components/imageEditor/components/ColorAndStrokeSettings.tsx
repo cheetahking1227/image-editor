@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { HexColorPicker, RgbaColorPicker, RgbaColor } from "react-colorful";
 import { PaintBucket, Highlighter } from "lucide-react";
 
@@ -12,11 +12,35 @@ type ColorAndStrokeSettingsType = {
 }
 
 export default function ColorAndStrokeSettings({ color, width, onColorChange, onWidthChange, bgColor, onBgColorChange }: ColorAndStrokeSettingsType) {
+  const fgPickerRef = useRef<HTMLDivElement>(null);
+  const bgPickerRef = useRef<HTMLDivElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        fgPickerRef.current &&
+        !fgPickerRef.current.contains(event.target as Node)
+      ) {
+        setPickerOpen(false);
+      }
+      if (
+        bgPickerRef.current &&
+        !bgPickerRef.current.contains(event.target as Node)
+      ) {
+        setBgPickerOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
-    <div className="absolute flex top-10 left-0 right-0 z-10 justify-center items-center bg-base-200 border-error mt-2 p-4 shadow-lg gap-4">
+    <div className="absolute flex top-20 left-0 right-0 z-10 justify-center items-center bg-base-200 border-error mt-2 p-4 shadow-lg gap-4">
       {/* Color Picker */}
       <div className="relative">
         <button onClick={() => setBgPickerOpen(!bgPickerOpen)} className="btn btn-small">
@@ -29,7 +53,7 @@ export default function ColorAndStrokeSettings({ color, width, onColorChange, on
           <PaintBucket size={20} />
         </button>
         {bgPickerOpen && (
-          <div className="absolute z-10 mt-2 bg-base-100 p-2 rounded-box shadow">
+          <div ref={bgPickerRef} className="absolute z-10 mt-2 bg-base-100 p-2 rounded-box shadow">
             <RgbaColorPicker color={bgColor} onChange={onBgColorChange!} />
             <div className="text-sm text-center mt-1">{color}</div>
           </div>
@@ -47,7 +71,7 @@ export default function ColorAndStrokeSettings({ color, width, onColorChange, on
           <Highlighter size={20} />
         </button>
         {pickerOpen && (
-          <div className="absolute z-10 mt-2 bg-base-100 p-2 rounded-box shadow">
+          <div ref={fgPickerRef} className="absolute z-10 mt-2 bg-base-100 p-2 rounded-box shadow">
             <HexColorPicker color={color} onChange={onColorChange} />
             <div className="text-sm text-center mt-1">{color}</div>
           </div>

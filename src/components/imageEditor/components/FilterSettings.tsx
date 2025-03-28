@@ -14,7 +14,7 @@ const filters = [
 
 export default function FilterSettings({ imageUrl, filter, onFilterChange }: FilterSettingsType) {
   return (
-    <div className="absolute flex top-10 left-0 right-0 z-10 justify-center items-center bg-base-200 border-error mt-2 p-4 shadow-lg gap-4">
+    <div className="absolute flex top-20 left-0 right-0 z-10 justify-center items-center bg-base-200 border-error mt-2 p-4 shadow-lg gap-4">
       {filters.map((filter) => (
         <button key={filter.name} className="flex flex-col items-center space-y-1 cursor-pointer" onClick={() => onFilterChange(filter.name)}>
           <div className={`w-16 h-16 rounded border overflow-hidden`}>
