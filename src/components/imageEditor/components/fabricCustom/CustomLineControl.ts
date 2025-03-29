@@ -125,8 +125,6 @@ export class CustomLineControl extends fabric.Control {
       (mouseLocalPosition.y * polylineBaseSize.y) / size.y +
       polyline.pathOffset.y
     );
-    // Snap the final position
-    finalPointPosition = new fabric.Point(finalPointPosition.x, finalPointPosition.y);
 
     if (!polyline.points) {
       polyline.points = [];

@@ -128,17 +128,6 @@ declare namespace fabric {
     startTop?: number | null;
   }
 
-  export interface CustomPolyline extends fabric.Polyline {
-    isBg: boolean;
-    roomId?: string;
-    pointIndex: number;
-    __corner: string;
-    controlPointsPositions?: { x: number; y: number }[];
-    _setPositionDimensions: (...args: any[]) => any;
-    points: fabric.Point[];
-    childImages?: CustomImage[];
-  }
-
   export type extendCanvas = {
     undo: () => void;
     redo: () => void;
@@ -170,39 +159,28 @@ declare namespace fabric {
   }
   export class CustomPolygon extends fabric.Polygon {
     type?: string | undefined;
-    lines: fabric.CustomPolyLine[];
-    elevation: number;
-    updatedPoints: fabric.Point[];
-    isSelected: boolean;
-    isLineSelected: boolean;
-    isRoom: boolean;
-    areaTextObj: fabric.Text;
-    isNotWall: boolean;
-    wallThickness: number;
-    customControls: any;
-    connectedPolygonInfo: any[];
-    isSnappedPoint: boolean;
-    prevPolygon: fabric.CustomPolygon | undefined;
-    prevConnectedPolygons: fabric.CustomPolygon[] | undefined;
-    modifiedConnectedPolygons: fabric.CustomPolygon[] | undefined;
-    lineOptions: any;
-
+    
     initialize?(
       points: fabric.Point[],
-      options: IObjectOptions & { lineOptions?: IObjectOptions },
+      options: IObjectOptions,
     );
-    updatePolygon(): void;
-    splitEvent(delLine: fabric.CustomPolyLine, oriLine: fabric.CustomPolyLine, newLine: fabric.CustomPolyLine): void;
-    removeTwoLine(delLine0: fabric.CustomPolyLine, delLine1: fabric.CustomPolyLine, addLine: fabric.CustomPolyLine): void;
-    updatePolygonFromPoints(newPoints: fabric.Point[]): void;
-    updatePolygonFromCustomItem(item: CustomItem): void;
-    showHideControlsByLine(line: fabric.CustomPolyLine, isShow: boolean);
-    controlSnapEvent(point: fabric.Point, index: number): void;
-    toObject?();
     fromObject?(options: IObjectOptions): CustomPolygon;
   }
 
-  export class CustomPolyLine extends fabric.CustomLine {
+  
+  export interface CustomPolyline extends fabric.Polyline {
+    isBg: boolean;
+    roomId?: string;
+    pointIndex: number;
+    __corner: string;
+    controlPointsPositions?: { x: number; y: number }[];
+    _setPositionDimensions: (...args: any[]) => any;
+    points: fabric.Point[];
+    childImages?: CustomImage[];
+    getAbsPoints: (points: fabric.Point[]) => fabric.Point[];
+    updateCustomControls(): void;
+  }
+  export class CustomPolyLine extends fabric.Polyline {
     type?: string | undefined;
     parentPolygon: fabric.CustomPolygon;
     parentId: string;
@@ -212,6 +190,9 @@ declare namespace fabric {
       options: IObjectOptions & { lineOptions?: IObjectOptions }
     );
     fromObject(options: IObjectOptions): CustomLine;
+    _setPositionDimensions({ }): void;
+    getAbsPoints: (points: fabric.Point[]) => fabric.Point[];
+    updateCustomControls(): void;
   }
   export interface CustomRect extends fabric.Rect {
     absPoint?: { start: fabric.Point; end: fabric.Point };
