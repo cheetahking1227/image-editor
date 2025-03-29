@@ -98,15 +98,21 @@ const ImageEditor: React.FC = () => {
       fabricCanvasRef.current = new fabric.Canvas(canvasRef.current, {
         preserveObjectStacking: true,
       });
+      
+      fabricCanvasRef.current.setWidth(800);
+      fabricCanvasRef.current.setHeight(600);
+      
     }
   }, [viewMode]);
 
   useEffect(() => {
     handleAnnotatinoRefresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [annotation, color, bgColor, strokeWidth]);
 
   useEffect(() => {
     drawImage(croppedImageUrl || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl, croppedImageUrl, filter,]);
 
   useEffect(() => {
@@ -513,6 +519,8 @@ const ImageEditor: React.FC = () => {
                 ref={canvasRef}
                 style={{
                   border: "1px solid #f00",
+                  width: 800,
+                  height: 600,
                 }}
               />
             </div>

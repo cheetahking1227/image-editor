@@ -1,5 +1,5 @@
 import { Polyline, Control } from "fabric/fabric-impl";
-
+import { fabric } from "fabric";
 export type ImageCanvasProps = {
   image: string;
   brightness?: number;
@@ -32,6 +32,11 @@ export interface ICustomLineControlOptions extends Control {
   id?: string;
   pointIndex?: number;
   objectType?: string;
+}
+
+export interface ICustomPolygonControlOptions extends Partial<fabric.Control> {
+  pointIndex: number;
+  objectType: string;
 }
 
 export type BgImageFinetuneItem = {
