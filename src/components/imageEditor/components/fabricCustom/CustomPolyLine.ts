@@ -13,6 +13,7 @@ fabric.CustomPolyLine = fabric.util.createClass(fabric.Polyline, {
   ) {
     this.callSuper("initialize", points, options);
     this._addCustomControls();
+    this._eventListner();
   },
 
   _addCustomControls: function () {
@@ -26,6 +27,19 @@ fabric.CustomPolyLine = fabric.util.createClass(fabric.Polyline, {
       });
       return acc;
     }, {});
+  },
+
+  _eventListner: function () {
+    this.on("modified", () => {
+      const absPoints = this.getAbsPoints(this.points);
+      this.set({ points: absPoints });
+      this.setCoords();
+      this._setPositionDimensions({});
+      this.dirty = true;
+      if (this.canvas) {
+        this.canvas.requestRenderAll(); // re-render canvas
+      }
+    });
   },
 
   updateCustomControls: function () {

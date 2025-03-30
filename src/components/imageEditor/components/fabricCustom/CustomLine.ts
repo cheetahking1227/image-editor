@@ -6,7 +6,6 @@ fabric.CustomLine = fabric.util.createClass(fabric.Polyline, {
   name: "Line",
   dimObjects: {},
   isSelected: false,
-  isNotWall: false,
   isHovered: false,
   isHoverControl: false,
   allLineObjects: undefined,
@@ -30,6 +29,16 @@ fabric.CustomLine = fabric.util.createClass(fabric.Polyline, {
   },
 
   _eventListner: function () {
+    this.on("modified", () => {
+      const absPoints = this._getAbsPoints(this.points);
+      this.set({ points: absPoints });
+      this.setCoords();
+      this._setPositionDimensions({});
+      this.dirty = true;
+      if (this.canvas) {
+        this.canvas.requestRenderAll(); // re-render canvas
+      }
+    });
   },
 
   initOptions: function () {
