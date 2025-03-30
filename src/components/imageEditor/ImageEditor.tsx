@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
+import { fabric } from "fabric";
+import { CropperRef, Cropper, Coordinates } from 'react-advanced-cropper';
 import {
   FolderOpen,
   ZoomIn,
@@ -24,8 +26,6 @@ import {
   CircleDashed,
   Droplet,
 } from 'lucide-react';
-import { fabric } from "fabric";
-import { CropperRef, Cropper, CropperState, CoreSettings, Coordinates } from 'react-advanced-cropper';
 import { RgbaColor } from "react-colorful";
 import {
   drawPen,
@@ -44,7 +44,6 @@ import FilterSettings from "./components/FilterSettings";
 import FinetuneSettings from "./components/FinetuneSettings";
 import 'react-advanced-cropper/dist/style.css'
 import 'react-advanced-cropper/dist/themes/bubble.css';
-import { setSelectionRange } from "@testing-library/user-event/dist/utils";
 
 const annotations = [
   { label: 'Pen', icon: <PenLine size={20} /> },
@@ -68,7 +67,6 @@ const Finetunes = [
 ];
 
 const ImageEditor: React.FC = () => {
-
   const bgImageInputRef = useRef<HTMLInputElement>(null);
   const addImageInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -76,6 +74,8 @@ const ImageEditor: React.FC = () => {
   const cropperRef = useRef<CropperRef>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [croppedImageUrl, setCroppedImageUrl] = useState<string>();
+  const [canvasImageUrl, setCanvasImageUrl] = useState<string>();
+  const [canvasObjects, setCanvasObjects] = useState<fabric.Object[]>([]);
   const [coordinates, setCoordinates] = useState<Coordinates>();
   const [viewMode, setViewMode] = useState<number>(1)
   const [originImageWidth, setOriginImageWidth] = useState<number>(0);
@@ -98,10 +98,10 @@ const ImageEditor: React.FC = () => {
       fabricCanvasRef.current = new fabric.Canvas(canvasRef.current, {
         preserveObjectStacking: true,
       });
-      
+
       fabricCanvasRef.current.setWidth(800);
       fabricCanvasRef.current.setHeight(600);
-      
+
     }
   }, [viewMode]);
 
@@ -111,7 +111,7 @@ const ImageEditor: React.FC = () => {
   }, [annotation, color, bgColor, strokeWidth]);
 
   useEffect(() => {
-    drawImage(croppedImageUrl || '');
+    drawImage(imageUrl || '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl, croppedImageUrl, filter,]);
 
@@ -119,7 +119,6 @@ const ImageEditor: React.FC = () => {
     if (fabricCanvasRef.current) {
       const canvas = fabricCanvasRef.current;
       const activeObject = canvas.getActiveObject();
-      console.log(activeObject?.type);
       switch (activeObject?.type) {
         case 'path':
           activeObject.set({
@@ -167,7 +166,7 @@ const ImageEditor: React.FC = () => {
     }
   }, [color, bgColor, strokeWidth]);
 
-  const drawImage = (url: string) => {
+  const drawImage = (url: string, isCrop = true, mode = 2) => {
     const filters: fabric.IBaseFilter[] = [];
 
     bgImageFinetune.forEach((item, index) => {
@@ -230,6 +229,21 @@ const ImageEditor: React.FC = () => {
       fabricImage.applyFilters(filters);
 
       canvas.backgroundImage = fabricImage;
+      if (coordinates && canvasObjects) {
+        if (isCrop && mode == 2) {
+          canvasObjects.forEach((obj) => {
+            obj.top = obj.top - coordinates.top;
+            obj.left = obj.left - coordinates.left;
+            canvas.add(obj)
+          });
+        }
+        if (canvas.backgroundImage) {
+          canvas.backgroundImage.top = canvas.backgroundImage.top - coordinates.top;
+          canvas.backgroundImage.left = canvas.backgroundImage.left - coordinates.left;
+        }
+        canvas.setWidth(coordinates.width);
+        canvas.setHeight(coordinates.height);
+      }
       canvas.requestRenderAll()
     }
   }
@@ -266,6 +280,26 @@ const ImageEditor: React.FC = () => {
   const handleImageCropping = () => {
     setIsCropWorking(true);
     if (viewMode === 1 && fabricCanvasRef.current) {
+      const canvas = fabricCanvasRef.current;
+      let objects = canvas.getObjects();
+      if (coordinates) {
+        objects.forEach((obj) => {
+          obj.top = obj.top + coordinates.top;
+          obj.left = obj.left + coordinates.left;
+        });
+        if (canvas.backgroundImage && typeof canvas.backgroundImage !== 'string') {
+          canvas.backgroundImage.top = canvas.backgroundImage.top + coordinates.top;
+          canvas.backgroundImage.left = canvas.backgroundImage.left + coordinates.left;
+        }
+        canvas.setWidth(originImageWidth);
+        canvas.setHeight(originImageHeight);
+      }
+      canvas.requestRenderAll();
+      setCanvasImageUrl(canvas.toDataURL({
+        format: 'png',
+        quality: 1.0
+      }))
+      setCanvasObjects(objects);
       fabricCanvasRef.current.dispose();
       fabricCanvasRef.current = null;
       setIsSelectedFinetune(false);
@@ -288,9 +322,9 @@ const ImageEditor: React.FC = () => {
   };
 
   const handleCancel = () => {
+    drawImage(imageUrl || '', true, viewMode);
     setViewMode(1);
     setIsCropWorking(false);
-    drawImage(croppedImageUrl || '');
     setIsSelectedFinetune(false);
     setIsSelectedAnnotation(9);
     setAnnotation('');
@@ -340,7 +374,7 @@ const ImageEditor: React.FC = () => {
   }
 
   const applyImage = () => {
-    drawImage(croppedImageUrl || '')
+    drawImage(imageUrl || '', false)
   };
 
   const handleRangeValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -354,7 +388,7 @@ const ImageEditor: React.FC = () => {
     setViewMode(1);
     setIsCropWorking(false);
     setIsSelectedFilter(false);
-    drawImage(croppedImageUrl || '');
+    drawImage(imageUrl || '', false);
     if (index === 7) {
       setAnnotation('');
       addImageInputRef.current?.click();
@@ -370,14 +404,14 @@ const ImageEditor: React.FC = () => {
     setIsSelectedFinetune(true);
     setViewMode(1);
     setIsCropWorking(false);
-    drawImage(croppedImageUrl || '');
+    drawImage(imageUrl || '', false);
   }
 
   const handleFilterClick = () => {
     setIsSelectedFilter(true);
     setViewMode(1);
     setIsCropWorking(false);
-    drawImage(croppedImageUrl || '');
+    drawImage(imageUrl || '', false);
   }
 
   const onColorChange = (color: string) => {
@@ -529,7 +563,7 @@ const ImageEditor: React.FC = () => {
               <Cropper
                 ref={cropperRef}
                 className={'cropper'}
-                src={imageUrl}
+                src={canvasImageUrl}
                 defaultCoordinates={coordinates}
                 stencilProps={{
                   grid: true

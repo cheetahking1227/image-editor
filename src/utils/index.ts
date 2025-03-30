@@ -272,10 +272,9 @@ export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: numb
   canvas.on('mouse:move', (opt: any) => {
     if (!isDrawing || !polygon) return;
     const pointer = opt.absolutePointer;
-    const linePoint = polygon.points;
-    if (linePoint) {
-      linePoint[linePoint.length - 1] = new fabric.Point(pointer.x, pointer.y);
-      polygon.set({ points: linePoint });
+    if (points) {
+      points[points.length - 1] = new fabric.Point(pointer.x, pointer.y);
+      polygon.set({ points: points as fabric.Point[] });
       polygon.setCoords();
       polygon._setPositionDimensions({});
       polygon.dirty = true;
