@@ -237,6 +237,13 @@ export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: numb
   canvas.on('mouse:down', (opt: any) => {
     const now = Date.now();
     if (now - lastClickTime < 300) {
+      points = points.slice(0, points.length - 1);
+      if (polygon) {
+        polygon.set({ points: points as fabric.Point[] });
+        polygon.setCoords();
+        polygon._setPositionDimensions({});
+        polygon.dirty = true;
+      }
       polygon = null;
       points = [];
       isDrawing = false;
@@ -282,11 +289,21 @@ export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: numb
     canvas.requestRenderAll();
   });
 
-  canvas.on('mouse:dblclick', () => {
-    isDrawing = false;
-    polygon = null;
-    points = [];
-  });
+  // canvas.on('mouse:dblclick', () => {
+
+  //   points = points.slice(0, points.length - 1);
+  //   console.log("point:", points);
+  //   if (polygon) {
+  //     polygon.set({ points: points as fabric.Point[] });
+  //     polygon.setCoords();
+  //     polygon._setPositionDimensions({});
+  //     polygon.dirty = true;
+  //     canvas.requestRenderAll();
+  //   }
+  //   isDrawing = false;
+  //   polygon = null;
+  //   points = [];
+  // });
 }
 
 export const addText = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor) => {

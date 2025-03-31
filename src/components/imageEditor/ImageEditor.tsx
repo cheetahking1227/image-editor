@@ -112,7 +112,7 @@ const ImageEditor: React.FC = () => {
             strokeWidth: strokeWidth
           });
           break;
-        case 'polyline':
+        case 'path':
           activeObject.set({
             stroke: color,
             strokeWidth: strokeWidth
