@@ -83,6 +83,11 @@ const ImageEditor: React.FC = () => {
       fabricCanvasRef.current.setWidth(800);
       fabricCanvasRef.current.setHeight(600);
     }
+    fabric.Object.prototype.transparentCorners = false;
+    fabric.Object.prototype.cornerColor = 'white';
+    fabric.Object.prototype.cornerStyle = 'circle';
+    fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
+    fabric.Object.prototype.cornerSize = 16;
   }, [viewMode]);
 
   useEffect(() => {
@@ -343,7 +348,6 @@ const ImageEditor: React.FC = () => {
 
   const handleImageAdd = (event: React.ChangeEvent<HTMLInputElement>) => {
     addImage(fabricCanvasRef.current!, event);
-    event.target.value = '';
   }
 
   const handleAnnotationSelect = (value: string) => {
@@ -444,7 +448,7 @@ const ImageEditor: React.FC = () => {
       (enlivenedObjects: fabric.Object[]) => {
         setCanvasObjects(enlivenedObjects);
       },
-      'fabric' // ✅ This is the expected string
+      'fabric'
     );
     setImageUrl(data.imageUrl);
     setCroppedImageUrl(data.imageUrl);

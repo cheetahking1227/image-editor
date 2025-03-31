@@ -71,21 +71,12 @@ export const drawRectangle = (canvas: fabric.Canvas, color: string, bgColor: Rgb
   let startX = 0;
   let startY = 0;
 
-  fabric.Object.prototype.transparentCorners = false;
-  fabric.Object.prototype.cornerColor = 'white';
-  fabric.Object.prototype.cornerStyle = 'circle';
-  fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
-  fabric.Object.prototype.cornerSize = 16;
-
   canvas.on('mouse:down', (opt: any) => {
     const target = canvas.findTarget(opt.e, true);
     if (target) return; // Prevent drawing over existing object
 
     const pointer = canvas.getPointer(opt.e);
     isDrawing = true;
-
-    // const target = canvas.findTarget(opt.e);
-    // if (target) return;
 
     startX = pointer.x;
     startY = pointer.y;
@@ -144,12 +135,6 @@ export const drawEllipse = (canvas: fabric.Canvas, color: string, bgColor: RgbaC
   let ellipse: fabric.Ellipse | null = null;
   let startX = 0;
   let startY = 0;
-
-  fabric.Object.prototype.transparentCorners = false;
-  fabric.Object.prototype.cornerColor = 'white';
-  fabric.Object.prototype.cornerStyle = 'circle';
-  fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
-  fabric.Object.prototype.cornerSize = 16;
 
   canvas.on('mouse:down', (opt: any) => {
     const target = canvas.findTarget(opt.e, true);
@@ -293,11 +278,6 @@ export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: numb
 export const addText = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor) => {
   if (!canvas) return;
   initEvent(canvas);
-  fabric.Object.prototype.transparentCorners = false;
-  fabric.Object.prototype.cornerColor = 'white';
-  fabric.Object.prototype.cornerStyle = 'circle';
-  fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
-  fabric.Object.prototype.cornerSize = 16;
 
   const text = new fabric.IText('Double-click to edit me', {
     left: 150,
@@ -319,12 +299,6 @@ export const addImage = (canvas: fabric.Canvas, event: React.ChangeEvent<HTMLInp
   const file = event.target.files?.[0];
   if (!file || !canvas) return;
   initEvent(canvas);
-
-  fabric.Object.prototype.transparentCorners = false;
-  fabric.Object.prototype.cornerColor = 'white';
-  fabric.Object.prototype.cornerStyle = 'circle';
-  fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
-  fabric.Object.prototype.cornerSize = 16;
 
   const reader = new FileReader();
   reader.onload = function (f) {
