@@ -8,6 +8,8 @@ import {
   Sparkles,
   Check,
   X,
+  FolderInput,
+  Save,
 } from 'lucide-react';
 import { RgbaColor } from "react-colorful";
 import {
@@ -28,10 +30,11 @@ import {
   addImage,
   initEvent,
 } from "../../utils";
-import { BG_IMAGE_FINETUNE } from "../../Constants";
+import { BG_IMAGE_FINETUNE } from "../../constants";
 import { BgImageFinetuneItem } from "../../types";
 import 'react-advanced-cropper/dist/style.css'
 import 'react-advanced-cropper/dist/themes/bubble.css';
+import { getImage, saveImage } from "../../actions";
 
 const ImageEditor: React.FC = () => {
   const bgImageInputRef = useRef<HTMLInputElement>(null);
@@ -83,8 +86,31 @@ const ImageEditor: React.FC = () => {
   }, [viewMode]);
 
   useEffect(() => {
-    handleAnnotatinoRefresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    initEvent(canvas);
+    switch (annotation) {
+      case 'Pen':
+        drawPen(canvas, color, strokeWidth);
+        break;
+      case 'Line':
+        drawLine(canvas, color, strokeWidth);
+        break;
+      case 'Rectangle':
+        drawRectangle(canvas, color, bgColor, strokeWidth);
+        break;
+      case 'Ellipse':
+        drawEllipse(canvas, color, bgColor, strokeWidth);
+        break;
+      case 'Arrow':
+        drawLine(canvas, color, strokeWidth, true);
+        break;
+      case 'Path':
+        drawPath(canvas, color, strokeWidth);
+        break;
+      default:
+        break;
+    }
   }, [annotation, color, bgColor, strokeWidth]);
 
   useEffect(() => {
@@ -251,8 +277,12 @@ const ImageEditor: React.FC = () => {
         setOriginImageWidth(originWidth);
         setOriginImageHeight(originHeight);
       }
-      setImageUrl(url);
-      setCroppedImageUrl(url);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageUrl(reader.result as string); // base64 string
+        setCroppedImageUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -316,34 +346,6 @@ const ImageEditor: React.FC = () => {
     event.target.value = '';
   }
 
-  const handleAnnotatinoRefresh = () => {
-    const canvas = fabricCanvasRef.current;
-    if (!canvas) return;
-    initEvent(canvas);
-    switch (annotation) {
-      case 'Pen':
-        drawPen(canvas, color, strokeWidth);
-        break;
-      case 'Line':
-        drawLine(canvas, color, strokeWidth);
-        break;
-      case 'Rectangle':
-        drawRectangle(canvas, color, bgColor, strokeWidth);
-        break;
-      case 'Ellipse':
-        drawEllipse(canvas, color, bgColor, strokeWidth);
-        break;
-      case 'Arrow':
-        drawLine(canvas, color, strokeWidth, true);
-        break;
-      case 'Path':
-        drawPath(canvas, color, strokeWidth);
-        break;
-      default:
-        break;
-    }
-  }
-
   const handleAnnotationSelect = (value: string) => {
     setAnnotation(value);
   }
@@ -352,14 +354,10 @@ const ImageEditor: React.FC = () => {
     setFinetune(value);
   }
 
-  const applyImage = () => {
-    drawImage(imageUrl || '', false)
-  };
-
   const handleRangeValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setRangeValue(parseInt(e.target.value));
     bgImageFinetune[finetune].value = parseInt(e.target.value);
-    applyImage();
+    drawImage(imageUrl || '', false);
   }
 
   const handleAnnotationClick = (index: number, label?: string) => {
@@ -424,6 +422,53 @@ const ImageEditor: React.FC = () => {
     }
   }
 
+  const handleGetImage = () => {
+    const data = getImage();
+    const img = new Image();
+    img.src = data.imageUrl;
+    img.onload = () => {
+      if (!img) return;
+      const maxWidth = window.innerWidth - 80;
+      const maxHeight = (window.innerHeight - 130) * 5 / 6;
+      const widthRatio = maxWidth / img.width;
+      const heightRatio = maxHeight / img.height;
+      const scale = Math.min(widthRatio, heightRatio, 1);
+      let originWidth = img.width * scale;
+      let originHeight = img.height * scale;
+      setOriginImageWidth(originWidth);
+      setOriginImageHeight(originHeight);
+    }
+    setCoordinates(data.coordinate);
+    fabric.util.enlivenObjects(
+      data.data,
+      (enlivenedObjects: fabric.Object[]) => {
+        setCanvasObjects(enlivenedObjects);
+      },
+      'fabric' // ✅ This is the expected string
+    );
+    setImageUrl(data.imageUrl);
+    setCroppedImageUrl(data.imageUrl);
+  }
+
+  const handleSaveImage = () => {
+    const canvas = fabricCanvasRef.current;
+    if (canvas) {
+      const canvasObjs = canvas?.getObjects();
+      if (coordinates) {
+        canvasObjs.forEach((obj) => {
+          obj.top = obj.top + coordinates.top;
+          obj.left = obj.left + coordinates.left;
+        });
+      }
+      const data = {
+        imageUrl: imageUrl,
+        data: canvasObjs,
+        coordinate: coordinates
+      };
+      saveImage(data);
+    }
+  }
+
   return (
     <div className="relative h-screen px-10 pt-20">
       {/* Toolbar */}
@@ -474,6 +519,12 @@ const ImageEditor: React.FC = () => {
           <button className="btn btn-ghost btn-sm" title="Discard" onClick={handleCancel}>
             <X size={20} />
           </button>
+          <button className="btn btn-ghost btn-sm" title="Get Image" onClick={handleGetImage}>
+            <FolderInput size={20} />
+          </button>
+          <button className="btn btn-ghost btn-sm" title="Save" onClick={handleSaveImage}>
+            <Save size={20} />
+          </button>
         </div>
         <input
           type="file"
@@ -520,14 +571,13 @@ const ImageEditor: React.FC = () => {
               <canvas
                 ref={canvasRef}
                 style={{
-                  border: "1px solid #f00",
+                  border: "1px solid #fff",
                   width: 800,
                   height: 600,
                 }}
               />
             </div>
             : <div className="flex w-full h-full justify-center items-center" style={{ width: originImageWidth, height: originImageHeight, }}>
-              {/* <ImageCropper imageSrc={(imageUrl) || ''} onCropConfirm={showCroppedImage} restoredCrop={restoredCrop!} setRestoredCrop={setRestoredCrop} zoom={zoom} /> */}
               <Cropper
                 ref={cropperRef}
                 className={'cropper'}

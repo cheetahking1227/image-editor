@@ -1,5 +1,5 @@
 import { FilterSettingsType } from "../../../../types";
-import { FILTERS } from "../../../../Constants";
+import { FILTERS } from "../../../../constants";
 
 export const FilterSettings = ({ imageUrl, onFilterChange }: FilterSettingsType) => {
   return (

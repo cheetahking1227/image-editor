@@ -1,6 +1,7 @@
 import { Polyline, Control } from "fabric/fabric-impl";
 import { fabric } from "fabric";
 import { RgbaColor } from "react-colorful";
+import { Coordinates } from "react-advanced-cropper";
 
 export type ImageCanvasProps = {
   image: string;
@@ -83,4 +84,10 @@ export type ZoomToolbarSectionType = {
   imageUrl: string;
   viewMode: number;
   onChange: (zoom: number) => void;
+}
+
+export type SaveImageType = {
+  imageUrl: string | null;
+  data: fabric.Object[];
+  coordinate: Coordinates | undefined;
 }
