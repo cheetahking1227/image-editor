@@ -7,6 +7,7 @@ import {
   CircleDashed,
   Droplet,
 } from 'lucide-react';
+import { FinetuneToolbarSectionType } from '../../../../types';
 
 const FINETUNES = [
   { label: 'Brightness', icon: <Sun size={20} /> },
@@ -17,11 +18,6 @@ const FINETUNES = [
   { label: 'Opacity', icon: <CircleDashed size={20} /> },
   { label: 'Blur', icon: <Droplet size={20} /> },
 ];
-
-type FinetuneToolbarSectionType = {
-  finetune: number,
-  onChangeFinetune: (index: number) => void
-}
 
 export const FinetuneToolbarSection = ({ finetune, onChangeFinetune }: FinetuneToolbarSectionType) => {
   return (

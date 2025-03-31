@@ -6,4 +6,10 @@ export const BG_IMAGE_FINETUNE = [
   { title: 'Exposure', value: 0, min: -100, max: 100 },
   { title: 'Opacity', value: 100, min: 0, max: 100 },
   { title: 'Blur', value: 0, min: 0, max: 100 },
-]
+];
+
+export const FILTERS = [
+  { name: 'Default', class: '' },
+  { name: 'Grayscale', class: 'grayscale' },
+  { name: 'Invert', class: 'invert' },
+];

@@ -1,5 +1,7 @@
 import { Polyline, Control } from "fabric/fabric-impl";
 import { fabric } from "fabric";
+import { RgbaColor } from "react-colorful";
+
 export type ImageCanvasProps = {
   image: string;
   brightness?: number;
@@ -44,4 +46,41 @@ export type BgImageFinetuneItem = {
   value: number;
   min: number;
   max: number;
+}
+
+export type AnnotationToolbarSectionType = {
+  annotation: string;
+  imageUrl: string;
+  onChangeAnnotation: (index: number, title?: string) => void;
+}
+
+export type ColorAndStrokeSettingsType = {
+  color: string;
+  width: number;
+  bgColor?: RgbaColor;
+  onColorChange: (color: string) => void;
+  onWidthChange: (width: number) => void;
+  onBgColorChange?: (color: RgbaColor) => void;
+}
+
+export type FilterSettingsType = {
+  imageUrl: string;
+  onFilterChange: (filter: string) => void;
+}
+
+export type FinetuneSettingsType = {
+  bgImageFinetune: BgImageFinetuneItem[];
+  finetune: number
+  handleRangeValueChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+export type FinetuneToolbarSectionType = {
+  finetune: number,
+  onChangeFinetune: (index: number) => void
+}
+
+export type ZoomToolbarSectionType = {
+  imageUrl: string;
+  viewMode: number;
+  onChange: (zoom: number) => void;
 }

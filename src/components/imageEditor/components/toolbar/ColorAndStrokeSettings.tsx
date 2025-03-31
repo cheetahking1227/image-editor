@@ -1,15 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { HexColorPicker, RgbaColorPicker, RgbaColor } from "react-colorful";
+import { HexColorPicker, RgbaColorPicker } from "react-colorful";
 import { PaintBucket, Highlighter } from "lucide-react";
-
-type ColorAndStrokeSettingsType = {
-  color: string;
-  width: number;
-  bgColor?: RgbaColor;
-  onColorChange: (color: string) => void;
-  onWidthChange: (width: number) => void;
-  onBgColorChange?: (color: RgbaColor) => void;
-}
+import { ColorAndStrokeSettingsType } from "../../../../types";
 
 export const ColorAndStrokeSettings = ({ color, width, onColorChange, onWidthChange, bgColor, onBgColorChange }: ColorAndStrokeSettingsType) => {
   const fgPickerRef = useRef<HTMLDivElement>(null);

@@ -1,10 +1,4 @@
-import { BgImageFinetuneItem } from "../../../../types";
-
-type FinetuneSettingsType = {
-  bgImageFinetune: BgImageFinetuneItem[];
-  finetune: number
-  handleRangeValueChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
+import { FinetuneSettingsType } from "../../../../types";
 
 export const FinetuneSettings = ({ bgImageFinetune, finetune, handleRangeValueChange }: FinetuneSettingsType) => {
   return (

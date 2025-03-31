@@ -65,10 +65,20 @@ const ImageEditor: React.FC = () => {
       fabricCanvasRef.current = new fabric.Canvas(canvasRef.current, {
         preserveObjectStacking: true,
       });
-
+      if (fabricCanvasRef.current) {
+        fabricCanvasRef.current.on('mouse:wheel', (opt) => {
+          const delta = opt.e.deltaY;
+          let zoom = fabricCanvasRef.current!.getZoom();
+          zoom *= 0.999 ** delta;
+          zoom = Math.max(1, Math.min(zoom, 3));
+          const center = new fabric.Point(fabricCanvasRef.current!.getWidth() / 2, fabricCanvasRef.current!.getHeight() / 2);
+          fabricCanvasRef.current!.zoomToPoint(center, zoom);
+          opt.e.preventDefault();
+          opt.e.stopPropagation();
+        });
+      }
       fabricCanvasRef.current.setWidth(800);
       fabricCanvasRef.current.setHeight(600);
-
     }
   }, [viewMode]);
 
@@ -236,7 +246,6 @@ const ImageEditor: React.FC = () => {
         const widthRatio = maxWidth / img.width;
         const heightRatio = maxHeight / img.height;
         const scale = Math.min(widthRatio, heightRatio, 1); // Don’t upscale
-
         let originWidth = img.width * scale;
         let originHeight = img.height * scale;
         setOriginImageWidth(originWidth);
@@ -383,20 +392,36 @@ const ImageEditor: React.FC = () => {
     setIsCropWorking(false);
   }
 
-  const onColorChange = (color: string) => {
+  const handleColorChange = (color: string) => {
     setColor(color);
   }
 
-  const onWidthChange = (width: number) => {
+  const handleWidthChange = (width: number) => {
     setStrokeWidth(width);
   }
 
-  const onBgColorChange = (bgColor: RgbaColor) => {
+  const handleBgColorChange = (bgColor: RgbaColor) => {
     setBgColor(bgColor);
   }
 
-  const onFilterChange = (value: string) => {
+  const handleFilterChange = (value: string) => {
     setFilter(value);
+  }
+
+  const handleZoomChange = (zoomFactor: number) => {
+    if (viewMode === 2) {
+      cropperRef.current?.zoomImage(zoomFactor)
+    } else {
+      const canvas = fabricCanvasRef.current;
+      if (canvas) {
+        let zoom = canvas.getZoom();
+        zoom *= 0.999 ** zoomFactor;
+        zoom = Math.max(1, Math.min(zoom, 3));
+        const center = new fabric.Point(canvas.getWidth() / 2, canvas.getHeight() / 2);
+        canvas.zoomToPoint(center, zoom);
+        canvas.requestRenderAll();
+      }
+    }
   }
 
   return (
@@ -412,7 +437,8 @@ const ImageEditor: React.FC = () => {
           ? <div className="flex gap-2">
             <ZoomToolbarSection
               imageUrl={imageUrl || ''}
-              onChange={(zoom) => { cropperRef.current?.zoomImage(zoom) }}
+              viewMode={viewMode}
+              onChange={handleZoomChange}
             />
             <div className="divider divider-horizontal"></div>
             <AnnotationToolbarSection
@@ -475,13 +501,13 @@ const ImageEditor: React.FC = () => {
                 color={color}
                 width={strokeWidth}
                 bgColor={bgColor}
-                onColorChange={onColorChange}
-                onWidthChange={onWidthChange}
-                onBgColorChange={onBgColorChange}
+                onColorChange={handleColorChange}
+                onWidthChange={handleWidthChange}
+                onBgColorChange={handleBgColorChange}
               />
               : <FilterSettings
                 imageUrl={croppedImageUrl || ''}
-                onFilterChange={onFilterChange}
+                onFilterChange={handleFilterChange}
               />
         )}
       </div>

@@ -8,6 +8,7 @@ import {
   Type,
   Image as InsertImage,
 } from 'lucide-react';
+import { AnnotationToolbarSectionType } from '../../../../types';
 
 const ANNOTATIONS = [
   { label: 'Pen', icon: <PenLine size={20} /> },
@@ -19,12 +20,6 @@ const ANNOTATIONS = [
   { label: 'Add Text', icon: <Type size={20} /> },
   { label: 'Add Image', icon: <InsertImage size={20} /> },
 ];
-
-type AnnotationToolbarSectionType = {
-  annotation: string;
-  imageUrl: string;
-  onChangeAnnotation: (index: number, title?: string) => void;
-}
 
 export const AnnotationToolbarSection = ({ annotation, imageUrl, onChangeAnnotation }: AnnotationToolbarSectionType) => {
   return (

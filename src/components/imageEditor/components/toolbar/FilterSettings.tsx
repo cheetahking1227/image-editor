@@ -1,13 +1,5 @@
-type FilterSettingsType = {
-  imageUrl: string;
-  onFilterChange: (filter: string) => void;
-}
-
-const FILTERS = [
-  { name: 'Default', class: '' },
-  { name: 'Grayscale', class: 'grayscale' },
-  { name: 'Invert', class: 'invert' },
-];
+import { FilterSettingsType } from "../../../../types";
+import { FILTERS } from "../../../../Constants";
 
 export const FilterSettings = ({ imageUrl, onFilterChange }: FilterSettingsType) => {
   return (
