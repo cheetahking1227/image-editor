@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { BgImageFinetuneItem } from "../../../types";
+import { BgImageFinetuneItem } from "../../../../types";
 
 type FinetuneSettingsType = {
   bgImageFinetune: BgImageFinetuneItem[];
@@ -7,7 +6,7 @@ type FinetuneSettingsType = {
   handleRangeValueChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export default function FinetuneSettings({ bgImageFinetune, finetune, handleRangeValueChange }: FinetuneSettingsType) {
+export const FinetuneSettings = ({ bgImageFinetune, finetune, handleRangeValueChange }: FinetuneSettingsType) => {
   return (
     <div className="absolute flex top-10 left-0 right-0 z-10 justify-center items-center bg-base-200 border-error mt-4 p-4 shadow-lg gap-4">
       <label className="block text-center">

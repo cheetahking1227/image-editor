@@ -3,30 +3,21 @@ import { fabric } from "fabric";
 import { CropperRef, Cropper, Coordinates } from 'react-advanced-cropper';
 import {
   FolderOpen,
-  ZoomIn,
-  ZoomOut,
   Crop as CropIcon,
-  PenLine,
-  Slash,
-  RectangleHorizontal,
-  Circle,
-  MoveUpRight,
-  Waypoints,
-  Type,
-  Image as InsertImage,
   SlidersHorizontal,
   Sparkles,
   Check,
   X,
-  Sun,
-  Contrast,
-  Eclipse,
-  Pipette,
-  Target,
-  CircleDashed,
-  Droplet,
 } from 'lucide-react';
 import { RgbaColor } from "react-colorful";
+import {
+  AnnotationToolbarSection,
+  FinetuneToolbarSection,
+  ZoomToolbarSection,
+  ColorAndStrokeSettings,
+  FilterSettings,
+  FinetuneSettings,
+} from "./components/toolbar";
 import {
   drawPen,
   drawLine,
@@ -37,34 +28,10 @@ import {
   addImage,
   initEvent,
 } from "../../utils";
-import { BgImageFinetuneItem } from "../../types";
 import { BG_IMAGE_FINETUNE } from "../../Constants";
-import ColorAndStrokeSettings from "./components/ColorAndStrokeSettings";
-import FilterSettings from "./components/FilterSettings";
-import FinetuneSettings from "./components/FinetuneSettings";
+import { BgImageFinetuneItem } from "../../types";
 import 'react-advanced-cropper/dist/style.css'
 import 'react-advanced-cropper/dist/themes/bubble.css';
-
-const annotations = [
-  { label: 'Pen', icon: <PenLine size={20} /> },
-  { label: 'Line', icon: <Slash size={20} /> },
-  { label: 'Rectangle', icon: <RectangleHorizontal size={20} /> },
-  { label: 'Ellipse', icon: <Circle size={20} /> },
-  { label: 'Arrow', icon: <MoveUpRight size={20} /> },
-  { label: 'Path', icon: <Waypoints size={20} /> },
-  { label: 'Add Text', icon: <Type size={20} /> },
-  { label: 'Add Image', icon: <InsertImage size={20} /> },
-];
-
-const Finetunes = [
-  { label: 'Brightness', icon: <Sun size={20} /> },
-  { label: 'Contrast', icon: <Contrast size={20} /> },
-  { label: 'Hue', icon: <Target size={20} /> },
-  { label: 'Saturation', icon: <Pipette size={20} /> },
-  { label: 'Exposure', icon: <Eclipse size={20} /> },
-  { label: 'Opacity', icon: <CircleDashed size={20} /> },
-  { label: 'Blur', icon: <Droplet size={20} /> },
-];
 
 const ImageEditor: React.FC = () => {
   const bgImageInputRef = useRef<HTMLInputElement>(null);
@@ -112,15 +79,18 @@ const ImageEditor: React.FC = () => {
 
   useEffect(() => {
     drawImage(imageUrl || '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageUrl, croppedImageUrl, filter,]);
+  }, [imageUrl, croppedImageUrl]);
+
+  useEffect(() => {
+    drawImage(imageUrl || '', false);
+  }, [filter])
 
   useEffect(() => {
     if (fabricCanvasRef.current) {
       const canvas = fabricCanvasRef.current;
       const activeObject = canvas.getActiveObject();
       switch (activeObject?.type) {
-        case 'path':
+        case 'customPolyLine':
           activeObject.set({
             stroke: color,
             strokeWidth: strokeWidth
@@ -411,7 +381,6 @@ const ImageEditor: React.FC = () => {
     setIsSelectedFilter(true);
     setViewMode(1);
     setIsCropWorking(false);
-    drawImage(imageUrl || '', false);
   }
 
   const onColorChange = (color: string) => {
@@ -441,41 +410,18 @@ const ImageEditor: React.FC = () => {
         </div>
         {!isSelectedFinetune
           ? <div className="flex gap-2">
-            <div className="flex flex-col justify-center items-center gap-2">
-              <div className="join">
-                <button className="btn btn-ghost btn-sm" title="Zoom In" disabled={!imageUrl} onClick={() => { cropperRef.current?.zoomImage(1.1) }}>
-                  <ZoomIn size={20} />
-                </button>
-                <button className="btn btn-ghost btn-sm" title="Zoom Out" disabled={!imageUrl} onClick={() => { cropperRef.current?.zoomImage(1 / 1.1) }}>
-                  <ZoomOut size={20} />
-                </button>
-              </div>
-              <div>Zoom</div>
-            </div>
+            <ZoomToolbarSection
+              imageUrl={imageUrl || ''}
+              onChange={(zoom) => { cropperRef.current?.zoomImage(zoom) }}
+            />
+            <div className="divider divider-horizontal"></div>
+            <AnnotationToolbarSection
+              annotation={annotation}
+              imageUrl={imageUrl || ''}
+              onChangeAnnotation={handleAnnotationClick}
+            />
             <div className="divider divider-horizontal"></div>
             <div className="flex flex-col justify-center items-center gap-2">
-              <div className="join">
-                {
-                  annotations.map((item, index) => (
-                    item.label === 'Add Image'
-                      ? <button key={index} className={`btn btn-ghost btn-sm ${item.label === annotation ? 'btn-active' : ''}`} title={item.label} disabled={!imageUrl} onClick={() => { handleAnnotationClick(index) }}>
-                        {item.icon}
-                      </button>
-                      : item.label === 'Add Text'
-                        ? <button key={index} className={`btn btn-ghost btn-sm ${item.label === annotation ? 'btn-active' : ''}`} title={item.label} disabled={!imageUrl} onClick={() => { handleAnnotationClick(index) }}>
-                          {item.icon}
-                        </button>
-                        : <button key={index} className={`btn btn-ghost btn-sm ${item.label === annotation ? 'btn-active' : ''}`} title={item.label} disabled={!imageUrl} onClick={() => { handleAnnotationClick(index, item.label) }}>
-                          {item.icon}
-                        </button>
-                  ))
-                }
-              </div>
-              <div>Annotation</div>
-            </div>
-            <div className="divider divider-horizontal"></div>
-            <div className="flex flex-col justify-center items-center gap-2">
-
               <div className="join">
                 <button className={`btn btn-ghost btn-sm ${isCropWorking ? 'btn-active' : ''}`} title="Crop and Transform" disabled={!imageUrl} onClick={handleImageCropping}>
                   <CropIcon size={20} />
@@ -490,13 +436,10 @@ const ImageEditor: React.FC = () => {
               <div>Image Format</div>
             </div>
           </div>
-          : <div>
-            {Finetunes.map((item, index) => (
-              <button key={index} className={`btn btn-ghost btn-sm ${finetune === index ? 'btn-active' : ''}`} title={item.label} onClick={() => { handleFinetuneChange(index) }}>
-                {item.icon}
-              </button>
-            ))}
-          </div>
+          : <FinetuneToolbarSection
+            finetune={finetune}
+            onChangeFinetune={handleFinetuneChange}
+          />
         }
         <div className="flex">
           <button className="btn btn-ghost btn-sm" title="Apply" onClick={showCroppedImage}>
@@ -538,7 +481,6 @@ const ImageEditor: React.FC = () => {
               />
               : <FilterSettings
                 imageUrl={croppedImageUrl || ''}
-                filter={filter}
                 onFilterChange={onFilterChange}
               />
         )}

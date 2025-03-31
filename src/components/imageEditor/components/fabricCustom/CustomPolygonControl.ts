@@ -55,7 +55,6 @@ export class CustomPolygonControl extends fabric.Control {
   actionHandler: fabric.Control["actionHandler"] = (_eventData, transform, x, y) => {
     const polygon = transform.target as fabric.Polygon;
     const index = this.pointIndex;
-    console.log(polygon);
     if (!polygon.points || polygon.points.length <= index) return false;
 
     const local = polygon.toLocalPoint(new fabric.Point(x, y), "center", "center");
@@ -70,7 +69,6 @@ export class CustomPolygonControl extends fabric.Control {
     polygon.points[index] = newPoint;
     polygon.setCoords();
     polygon.dirty = true;
-    console.log(polygon);
     return true;
   };
 }

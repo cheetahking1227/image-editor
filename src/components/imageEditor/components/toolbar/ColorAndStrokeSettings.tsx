@@ -11,7 +11,7 @@ type ColorAndStrokeSettingsType = {
   onBgColorChange?: (color: RgbaColor) => void;
 }
 
-export default function ColorAndStrokeSettings({ color, width, onColorChange, onWidthChange, bgColor, onBgColorChange }: ColorAndStrokeSettingsType) {
+export const ColorAndStrokeSettings = ({ color, width, onColorChange, onWidthChange, bgColor, onBgColorChange }: ColorAndStrokeSettingsType) => {
   const fgPickerRef = useRef<HTMLDivElement>(null);
   const bgPickerRef = useRef<HTMLDivElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
