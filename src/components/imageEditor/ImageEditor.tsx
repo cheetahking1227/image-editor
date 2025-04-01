@@ -474,7 +474,7 @@ const ImageEditor: React.FC = () => {
   }
 
   return (
-    <div className="relative h-screen px-10 pt-20">
+    <div className="relative h-screen px-10">
       {/* Toolbar */}
       <div className="relative flex justify-between items-center border p-4">
         <div className="flex">
