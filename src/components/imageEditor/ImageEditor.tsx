@@ -29,6 +29,8 @@ import {
   addText,
   addImage,
   initEvent,
+  pressRightButton,
+  clampPan,
 } from "../../utils";
 import { BG_IMAGE_FINETUNE } from "../../constants";
 import { BgImageFinetuneItem } from "../../types";
@@ -67,6 +69,7 @@ const ImageEditor: React.FC = () => {
     if (canvasRef.current && !fabricCanvasRef.current) {
       fabricCanvasRef.current = new fabric.Canvas(canvasRef.current, {
         preserveObjectStacking: true,
+        fireRightClick: true,
       });
       if (fabricCanvasRef.current) {
         fabricCanvasRef.current.on('mouse:wheel', (opt) => {
@@ -78,16 +81,19 @@ const ImageEditor: React.FC = () => {
           fabricCanvasRef.current!.zoomToPoint(center, zoom);
           opt.e.preventDefault();
           opt.e.stopPropagation();
+          clampPan(fabricCanvasRef.current!);
         });
+        fabricCanvasRef.current.setWidth(800);
+        fabricCanvasRef.current.setHeight(600);
+        pressRightButton(fabricCanvasRef.current);
       }
-      fabricCanvasRef.current.setWidth(800);
-      fabricCanvasRef.current.setHeight(600);
     }
     fabric.Object.prototype.transparentCorners = false;
     fabric.Object.prototype.cornerColor = 'white';
     fabric.Object.prototype.cornerStyle = 'circle';
     fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
     fabric.Object.prototype.cornerSize = 16;
+    // Delete Event
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!fabricCanvasRef.current) return;
 
@@ -100,6 +106,7 @@ const ImageEditor: React.FC = () => {
         }
       }
     };
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [viewMode]);
@@ -107,7 +114,6 @@ const ImageEditor: React.FC = () => {
   useEffect(() => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
-    initEvent(canvas);
     switch (annotation) {
       case 'Pen':
         drawPen(canvas, color, strokeWidth);
@@ -234,7 +240,7 @@ const ImageEditor: React.FC = () => {
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
       if (!img) return;
-      const maxWidth = window.innerWidth - 80;
+      const maxWidth = window.innerWidth - 100;
       const maxHeight = (window.innerHeight - 130) * 5 / 6;
       // Scale down to fit screen
       const widthRatio = maxWidth / img.width;
@@ -350,6 +356,8 @@ const ImageEditor: React.FC = () => {
   };
 
   const handleCancel = () => {
+    initEvent(fabricCanvasRef.current!);
+    pressRightButton(fabricCanvasRef.current!);
     drawImage(imageUrl || '', true, viewMode);
     setViewMode(1);
     setIsCropWorking(false);
