@@ -7,6 +7,7 @@ import {
   Waypoints,
   Type,
   Image as InsertImage,
+  Trash2,
 } from 'lucide-react';
 import { AnnotationToolbarSectionType } from '../../../../types';
 
@@ -21,7 +22,7 @@ const ANNOTATIONS = [
   { label: 'Add Image', icon: <InsertImage size={20} /> },
 ];
 
-export const AnnotationToolbarSection = ({ annotation, imageUrl, onChangeAnnotation }: AnnotationToolbarSectionType) => {
+export const AnnotationToolbarSection = ({ annotation, imageUrl, onChangeAnnotation, onDeleteAnnotation }: AnnotationToolbarSectionType) => {
   return (
     <div className="flex flex-col justify-center items-center gap-2">
       <div className="join">
@@ -40,6 +41,9 @@ export const AnnotationToolbarSection = ({ annotation, imageUrl, onChangeAnnotat
                 </button>
           ))
         }
+        <button className={`btn btn-ghost btn-sm`} title='Delete' disabled={!imageUrl} onClick={onDeleteAnnotation}>
+          <Trash2 size={20} />
+        </button>
       </div>
       <div>Annotation</div>
     </div>

@@ -53,6 +53,7 @@ export type AnnotationToolbarSectionType = {
   annotation: string;
   imageUrl: string;
   onChangeAnnotation: (index: number, title?: string) => void;
+  onDeleteAnnotation: () => void;
 }
 
 export type ColorAndStrokeSettingsType = {

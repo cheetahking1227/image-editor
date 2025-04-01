@@ -88,6 +88,20 @@ const ImageEditor: React.FC = () => {
     fabric.Object.prototype.cornerStyle = 'circle';
     fabric.Object.prototype.cornerStrokeColor = 'rgba(92, 178, 209, 1)';
     fabric.Object.prototype.cornerSize = 16;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!fabricCanvasRef.current) return;
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const activeObjects = fabricCanvasRef.current.getActiveObjects();
+        if (activeObjects.length) {
+          activeObjects.forEach(obj => fabricCanvasRef.current?.remove(obj));
+          fabricCanvasRef.current.discardActiveObject();
+          fabricCanvasRef.current.requestRenderAll();
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [viewMode]);
 
   useEffect(() => {
@@ -473,6 +487,19 @@ const ImageEditor: React.FC = () => {
     }
   }
 
+  const handleObjectsDelete = () => {
+    const canvas = fabricCanvasRef.current;
+    if (canvas) {
+      const activeObjects = canvas.getActiveObjects();
+
+      if (activeObjects.length) {
+        activeObjects.forEach(obj => canvas.remove(obj));
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+      }
+    }
+  }
+
   return (
     <div className="relative h-screen px-10">
       {/* Toolbar */}
@@ -494,6 +521,7 @@ const ImageEditor: React.FC = () => {
               annotation={annotation}
               imageUrl={imageUrl || ''}
               onChangeAnnotation={handleAnnotationClick}
+              onDeleteAnnotation={handleObjectsDelete}
             />
             <div className="divider divider-horizontal"></div>
             <div className="flex flex-col justify-center items-center gap-2">
