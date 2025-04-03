@@ -159,7 +159,7 @@ declare namespace fabric {
   }
   export class CustomPolygon extends fabric.Polygon {
     type?: string | undefined;
-    
+
     initialize?(
       points: fabric.Point[],
       options: IObjectOptions,
@@ -167,7 +167,7 @@ declare namespace fabric {
     fromObject?(options: IObjectOptions): CustomPolygon;
   }
 
-  
+
   export interface CustomPolyline extends fabric.Polyline {
     isBg: boolean;
     roomId?: string;
@@ -203,6 +203,7 @@ declare namespace fabric {
   }
   export interface CustomLine extends fabric.Line {
     absPoint?: { start: fabric.Point; end: fabric.Point };
+    isArrow?: boolean;
   }
 
   export interface TempLine extends fabric.Line {

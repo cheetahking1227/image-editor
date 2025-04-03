@@ -7,6 +7,7 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.8",
     "@mui/material": "^6.4.8",
+    "@reduxjs/toolkit": "^2.6.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
@@ -22,7 +23,9 @@
     "react-advanced-cropper": "^0.20.1",
     "react-colorful": "^5.6.1",
     "react-dom": "^19.0.0",
+    "react-redux": "^9.2.0",
     "react-scripts": "5.0.1",
+    "uuid": "^11.1.0",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

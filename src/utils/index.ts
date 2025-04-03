@@ -1,7 +1,8 @@
 import { fabric } from "fabric";
 import { RgbaColor } from "react-colorful";
+import { AnnotationsTableDataType } from "../types";
 
-export const drawPen = (canvas: fabric.Canvas, color: string, strokeWidth: number,) => {
+export const drawPen = (canvas: fabric.Canvas, color: string, strokeWidth: number, handleObjectAdd: (obj: AnnotationsTableDataType) => void) => {
   initEvent(canvas);
   pressRightButton(canvas);
   canvas.isDrawingMode = true;
@@ -10,7 +11,7 @@ export const drawPen = (canvas: fabric.Canvas, color: string, strokeWidth: numbe
   canvas.freeDrawingBrush.width = strokeWidth;
 }
 
-export const drawLine = (canvas: fabric.Canvas, color: string, strokeWidth: number, isArrow = false) => {
+export const drawLine = (canvas: fabric.Canvas, color: string, strokeWidth: number, isArrow = false, handleObjectAdd: (obj: AnnotationsTableDataType) => void) => {
   initEvent(canvas);
 
   let isDrawing = false;
@@ -46,7 +47,7 @@ export const drawLine = (canvas: fabric.Canvas, color: string, strokeWidth: numb
         evented: true,
         hasBorders: false,
         perPixelTargetFind: true,
-        isArrow: isArrow
+        isArrow: isArrow,
       });
       canvas.add(line);
     }
@@ -80,12 +81,17 @@ export const drawLine = (canvas: fabric.Canvas, color: string, strokeWidth: numb
 
   canvas.on('mouse:up', () => {
     if (line) {
-      line.set({
-        selectable: true,
-        evented: true,
-      });
-
-      canvas.setActiveObject(line);
+      if (line.width! <= 10 && line.height! <= 10) {
+        canvas.remove(line);
+      } else {
+        line.set({
+          selectable: true,
+          evented: true,
+        });
+        canvas.setActiveObject(line);
+        handleObjectAdd(extractObjectData(line));
+      }
+      canvas.requestRenderAll();
     }
     isPanning = false;
     canvas.selection = true;
@@ -94,7 +100,7 @@ export const drawLine = (canvas: fabric.Canvas, color: string, strokeWidth: numb
   });
 }
 
-export const drawRectangle = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor, strokeWidth: number) => {
+export const drawRectangle = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor, strokeWidth: number, handleObjectAdd: (obj: AnnotationsTableDataType) => void) => {
   initEvent(canvas);
 
   let isDrawing = false;
@@ -171,13 +177,18 @@ export const drawRectangle = (canvas: fabric.Canvas, color: string, bgColor: Rgb
 
   canvas.on('mouse:up', () => {
     if (rect) {
-      rect.set({
-        selectable: true,
-        hasControls: true,
-        hasRotatingPoint: true,
-      });
-
-      canvas.setActiveObject(rect);
+      if (rect.width! < 10 && rect.height! < 10) {
+        canvas.remove(rect);
+      } else {
+        rect.set({
+          selectable: true,
+          hasControls: true,
+          hasRotatingPoint: true,
+        });
+        canvas.setActiveObject(rect);
+        handleObjectAdd(extractObjectData(rect));
+      }
+      canvas.requestRenderAll();
     }
     isPanning = false;
     canvas.selection = true;
@@ -186,7 +197,7 @@ export const drawRectangle = (canvas: fabric.Canvas, color: string, bgColor: Rgb
   });
 }
 
-export const drawEllipse = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor, strokeWidth: number) => {
+export const drawEllipse = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor, strokeWidth: number, handleObjectAdd: (obj: AnnotationsTableDataType) => void) => {
   initEvent(canvas);
 
   let isDrawing = false;
@@ -268,13 +279,18 @@ export const drawEllipse = (canvas: fabric.Canvas, color: string, bgColor: RgbaC
 
   canvas.on('mouse:up', () => {
     if (ellipse) {
-      ellipse.set({
-        selectable: true,
-        hasControls: true,
-        hasRotatingPoint: true,
-      });
-
-      canvas.setActiveObject(ellipse);
+      if (ellipse.rx! <= 5 && ellipse.ry! <= 10) {
+        canvas.remove(ellipse);
+      } else {
+        ellipse.set({
+          selectable: true,
+          hasControls: true,
+          hasRotatingPoint: true,
+        });
+        canvas.setActiveObject(ellipse);
+        handleObjectAdd(extractObjectData(ellipse));
+      }
+      canvas.requestRenderAll();
     }
     isPanning = false;
     canvas.selection = true;
@@ -288,7 +304,7 @@ interface Point {
   y: number;
 }
 
-export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: number) => {
+export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: number, handleObjectAdd: (obj: AnnotationsTableDataType) => void) => {
   initEvent(canvas);
 
   let polygonOptions: fabric.IPolylineOptions = {
@@ -324,6 +340,7 @@ export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: numb
           polygon.setCoords();
           polygon._setPositionDimensions({});
           polygon.dirty = true;
+          handleObjectAdd(extractObjectData(canvas.getActiveObject()!));
         }
         polygon = null;
         points = [];
@@ -389,7 +406,7 @@ export const drawPath = (canvas: fabric.Canvas, color: string, strokeWidth: numb
   });
 }
 
-export const addText = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor) => {
+export const addText = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor, handleObjectAdd: (obj: AnnotationsTableDataType) => void) => {
   if (!canvas) return;
   initEvent(canvas);
   pressRightButton(canvas);
@@ -406,10 +423,11 @@ export const addText = (canvas: fabric.Canvas, color: string, bgColor: RgbaColor
 
   canvas.add(text);
   canvas.setActiveObject(text);
-  canvas.renderAll();
+  handleObjectAdd(extractObjectData(text));
+  canvas.requestRenderAll();
 }
 
-export const addImage = (canvas: fabric.Canvas, event: React.ChangeEvent<HTMLInputElement>) => {
+export const addImage = (canvas: fabric.Canvas, event: React.ChangeEvent<HTMLInputElement>, handleObjectAdd: (obj: AnnotationsTableDataType) => void) => {
   const file = event.target.files?.[0];
   if (!file || !canvas) return;
   initEvent(canvas);
@@ -431,7 +449,8 @@ export const addImage = (canvas: fabric.Canvas, event: React.ChangeEvent<HTMLInp
 
       canvas!.add(img);
       canvas!.setActiveObject(img);
-      canvas!.renderAll();
+      handleObjectAdd(extractObjectData(img));
+      canvas!.requestRenderAll();
     });
   };
 
@@ -520,3 +539,55 @@ export const clampPan = function (canvas: fabric.Canvas) {
   vpt[4] = Math.max(minX, Math.min(vpt[4], maxX));
   vpt[5] = Math.max(minY, Math.min(vpt[5], maxY));
 }
+
+export const extractObjectData = (obj: fabric.Object, isUpdated: boolean = false) => {
+  let type = '';
+  let coordinates = {};
+  if (obj.type === 'customLine') {
+    const lineObj = (obj as unknown as fabric.CustomLine)
+    type = lineObj.isArrow ? 'Arrow' : 'Line';
+  } else if (obj.type === 'rect') {
+    type = 'Rectangle';
+  } else if (obj.type === 'ellipse') {
+    type = 'Ellipse';
+  } else if (obj.type === 'customPolyLine') {
+    type = 'Polyline';
+  } else if (obj.type === 'i-text') {
+    type = 'Text';
+  } else if (obj.type === 'image') {
+    type = 'Image';
+  } else if (obj.type === 'path') {
+    type = 'Pen';
+  }
+
+  if (isUpdated) {
+    let minX = Math.min(obj.aCoords?.bl.x!, obj.aCoords?.br.x!, obj.aCoords?.tl.x!, obj.aCoords?.tr.x!);
+    let minY = Math.min(obj.aCoords?.bl.y!, obj.aCoords?.br.y!, obj.aCoords?.tl.y!, obj.aCoords?.tr.y!);
+    let maxX = Math.max(obj.aCoords?.bl.x!, obj.aCoords?.br.x!, obj.aCoords?.tl.x!, obj.aCoords?.tr.x!);
+    let maxY = Math.max(obj.aCoords?.bl.y!, obj.aCoords?.br.y!, obj.aCoords?.tl.y!, obj.aCoords?.tr.y!);
+    coordinates = {
+      left: minX,
+      top: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  } else {
+    coordinates = {
+      left: obj.left,
+      top: obj.top,
+      width: obj.width,
+      height: obj.height,
+    };
+  }
+
+  return {
+    id: obj?.id, // Optional unique id
+    type: type,
+    text: obj.type === 'i-text' || obj.type === 'textbox' ? (obj as any).text : undefined,
+    coordinates: coordinates,
+    fill: (obj as any).fill,
+    stroke: obj.stroke,
+    // angle: obj.angle,
+    // Add more properties as needed
+  };
+};

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { fabric } from "fabric";
 import { CropperRef, Cropper, Coordinates } from 'react-advanced-cropper';
+import { v4 as uuid } from 'uuid';
 import {
   FolderOpen,
   Crop as CropIcon,
@@ -31,14 +33,20 @@ import {
   initEvent,
   pressRightButton,
   clampPan,
+  extractObjectData,
 } from "../../utils";
 import { BG_IMAGE_FINETUNE } from "../../constants";
-import { BgImageFinetuneItem } from "../../types";
+import { AnnotationsTableDataType, BgImageFinetuneItem } from "../../types";
 import 'react-advanced-cropper/dist/style.css'
 import 'react-advanced-cropper/dist/themes/bubble.css';
 import { getImage, saveImage } from "../../actions";
+import { addObject, deleteObject, updateObject } from "../../redux/actions/imageEditorActions";
+import AnnotationsTable from "../AnnotationsTable";
 
 const ImageEditor: React.FC = () => {
+  const objectData = useSelector((state: any) => state.imageEditor.objectData)
+  const dispatch = useDispatch();
+
   const bgImageInputRef = useRef<HTMLInputElement>(null);
   const addImageInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -71,21 +79,43 @@ const ImageEditor: React.FC = () => {
         preserveObjectStacking: true,
         fireRightClick: true,
       });
-      if (fabricCanvasRef.current) {
-        fabricCanvasRef.current.on('mouse:wheel', (opt) => {
+      const canvas = fabricCanvasRef.current;
+      if (canvas) {
+        canvas.on('mouse:wheel', (opt) => {
           const delta = opt.e.deltaY;
-          let zoom = fabricCanvasRef.current!.getZoom();
+          let zoom = canvas!.getZoom();
           zoom *= 0.999 ** delta;
           zoom = Math.max(1, Math.min(zoom, 3));
-          const center = new fabric.Point(fabricCanvasRef.current!.getWidth() / 2, fabricCanvasRef.current!.getHeight() / 2);
-          fabricCanvasRef.current!.zoomToPoint(center, zoom);
+          const center = new fabric.Point(canvas!.getWidth() / 2, canvas!.getHeight() / 2);
+          canvas!.zoomToPoint(center, zoom);
           opt.e.preventDefault();
           opt.e.stopPropagation();
-          clampPan(fabricCanvasRef.current!);
+          clampPan(canvas!);
         });
-        fabricCanvasRef.current.setWidth(800);
-        fabricCanvasRef.current.setHeight(600);
-        pressRightButton(fabricCanvasRef.current);
+        canvas.setWidth(800);
+        canvas.setHeight(600);
+        pressRightButton(canvas);
+        canvas.on('object:added', (event) => {
+          const obj = event.target;
+          if (!obj?.id) {
+            obj?.set('id', uuid());
+            const originalToObject = obj?.toObject;
+            obj!.toObject = function (this: fabric.Object, propertiesToInclude?: string[]) {
+              return {
+                ...originalToObject!.call(this, propertiesToInclude),
+                id: this.id,
+              };
+            };
+          }
+          if (obj!.type == 'path') {
+            handleObjectAdd(extractObjectData(obj!));
+          }
+        });
+        canvas.on('object:modified', (event) => {
+          const object = canvas.getActiveObject();
+          let obj = extractObjectData(object!, true)
+          dispatch(updateObject(obj));
+        });
       }
     }
     fabric.Object.prototype.transparentCorners = false;
@@ -97,10 +127,13 @@ const ImageEditor: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!fabricCanvasRef.current) return;
 
-      if (e.key === "Delete" || e.key === "Backspace") {
+      if (e.key === "Delete") {
         const activeObjects = fabricCanvasRef.current.getActiveObjects();
         if (activeObjects.length) {
-          activeObjects.forEach(obj => fabricCanvasRef.current?.remove(obj));
+          activeObjects.forEach(obj => {
+            fabricCanvasRef.current?.remove(obj);
+            dispatch(deleteObject(obj.id!))
+          });
           fabricCanvasRef.current.discardActiveObject();
           fabricCanvasRef.current.requestRenderAll();
         }
@@ -116,22 +149,22 @@ const ImageEditor: React.FC = () => {
     if (!canvas) return;
     switch (annotation) {
       case 'Pen':
-        drawPen(canvas, color, strokeWidth);
+        drawPen(canvas, color, strokeWidth, handleObjectAdd);
         break;
       case 'Line':
-        drawLine(canvas, color, strokeWidth);
+        drawLine(canvas, color, strokeWidth, false, handleObjectAdd);
         break;
       case 'Rectangle':
-        drawRectangle(canvas, color, bgColor, strokeWidth);
+        drawRectangle(canvas, color, bgColor, strokeWidth, handleObjectAdd);
         break;
       case 'Ellipse':
-        drawEllipse(canvas, color, bgColor, strokeWidth);
+        drawEllipse(canvas, color, bgColor, strokeWidth, handleObjectAdd);
         break;
       case 'Arrow':
-        drawLine(canvas, color, strokeWidth, true);
+        drawLine(canvas, color, strokeWidth, true, handleObjectAdd);
         break;
       case 'Path':
-        drawPath(canvas, color, strokeWidth);
+        drawPath(canvas, color, strokeWidth, handleObjectAdd);
         break;
       default:
         break;
@@ -279,6 +312,10 @@ const ImageEditor: React.FC = () => {
     }
   }
 
+  const handleObjectAdd = (obj: AnnotationsTableDataType) => {
+    dispatch(addObject(obj))
+  }
+
   const handleBgImageFileOpen = () => {
     bgImageInputRef.current?.click();
   };
@@ -356,8 +393,10 @@ const ImageEditor: React.FC = () => {
   };
 
   const handleCancel = () => {
-    initEvent(fabricCanvasRef.current!);
-    pressRightButton(fabricCanvasRef.current!);
+    if (fabricCanvasRef.current) {
+      initEvent(fabricCanvasRef.current);
+      pressRightButton(fabricCanvasRef.current);
+    }
     drawImage(imageUrl || '', true, viewMode);
     setViewMode(1);
     setIsCropWorking(false);
@@ -369,7 +408,7 @@ const ImageEditor: React.FC = () => {
 
 
   const handleImageAdd = (event: React.ChangeEvent<HTMLInputElement>) => {
-    addImage(fabricCanvasRef.current!, event);
+    addImage(fabricCanvasRef.current!, event, handleObjectAdd);
   }
 
   const handleAnnotationSelect = (value: string) => {
@@ -397,7 +436,7 @@ const ImageEditor: React.FC = () => {
       addImageInputRef.current?.click();
     } else if (index === 6) {
       setAnnotation('');
-      addText(fabricCanvasRef.current!, color, bgColor);
+      addText(fabricCanvasRef.current!, color, bgColor, handleObjectAdd);
     } else {
       handleAnnotationSelect(label!);
     }
@@ -499,137 +538,156 @@ const ImageEditor: React.FC = () => {
     const canvas = fabricCanvasRef.current;
     if (canvas) {
       const activeObjects = canvas.getActiveObjects();
-
       if (activeObjects.length) {
-        activeObjects.forEach(obj => canvas.remove(obj));
+        activeObjects.forEach(obj => {
+          canvas.remove(obj);
+          dispatch(deleteObject(obj.id!))
+        });
         canvas.discardActiveObject();
         canvas.requestRenderAll();
       }
     }
   }
 
-  return (
-    <div className="relative h-screen px-10">
-      {/* Toolbar */}
-      <div className="relative flex justify-between items-center border p-4">
-        <div className="flex">
-          <button className="btn btn-ghost btn-sm" title="Open" onClick={handleBgImageFileOpen}>
-            <FolderOpen size={20} />
-          </button>
-        </div>
-        {!isSelectedFinetune
-          ? <div className="flex gap-2">
-            <ZoomToolbarSection
-              imageUrl={imageUrl || ''}
-              viewMode={viewMode}
-              onChange={handleZoomChange}
-            />
-            <div className="divider divider-horizontal"></div>
-            <AnnotationToolbarSection
-              annotation={annotation}
-              imageUrl={imageUrl || ''}
-              onChangeAnnotation={handleAnnotationClick}
-              onDeleteAnnotation={handleObjectsDelete}
-            />
-            <div className="divider divider-horizontal"></div>
-            <div className="flex flex-col justify-center items-center gap-2">
-              <div className="join">
-                <button className={`btn btn-ghost btn-sm ${isCropWorking ? 'btn-active' : ''}`} title="Crop and Transform" disabled={!imageUrl} onClick={handleImageCropping}>
-                  <CropIcon size={20} />
-                </button>
-                <button className="btn btn-ghost btn-sm" title="Finetune" disabled={!imageUrl} onClick={() => { handleFinetuneClick() }}>
-                  <SlidersHorizontal size={20} />
-                </button>
-                <button className={`btn btn-ghost btn-sm ${isSelectedFilter ? 'btn-active' : ''}`} title="Filter" disabled={!imageUrl} onClick={() => { handleFilterClick() }}>
-                  <Sparkles size={20} />
-                </button>
-              </div>
-              <div>Image Format</div>
-            </div>
-          </div>
-          : <FinetuneToolbarSection
-            finetune={finetune}
-            onChangeFinetune={handleFinetuneChange}
-          />
-        }
-        <div className="flex">
-          <button className="btn btn-ghost btn-sm" title="Apply" onClick={showCroppedImage}>
-            <Check size={20} />
-          </button>
-          <button className="btn btn-ghost btn-sm" title="Discard" onClick={handleCancel}>
-            <X size={20} />
-          </button>
-          <button className="btn btn-ghost btn-sm" title="Get Image" onClick={handleGetImage}>
-            <FolderInput size={20} />
-          </button>
-          <button className="btn btn-ghost btn-sm" title="Save" onClick={handleSaveImage}>
-            <Save size={20} />
-          </button>
-        </div>
-        <input
-          type="file"
-          accept="image/*"
-          ref={bgImageInputRef}
-          onChange={handleBgImageChange}
-          style={{ display: "none" }}
-        />
-        <input
-          type="file"
-          accept="image/*"
-          ref={addImageInputRef}
-          onChange={handleImageAdd}
-          style={{ display: "none" }}
-        />
-        {(isSelectedFinetune || isSelectedAnnotation < 9 || isSelectedFilter) && (
-          isSelectedFinetune
-            ? <FinetuneSettings
-              finetune={finetune}
-              bgImageFinetune={bgImageFinetune}
-              handleRangeValueChange={handleRangeValueChange}
-            />
-            : !isSelectedFilter
-              ? <ColorAndStrokeSettings
-                color={color}
-                width={strokeWidth}
-                bgColor={bgColor}
-                onColorChange={handleColorChange}
-                onWidthChange={handleWidthChange}
-                onBgColorChange={handleBgColorChange}
-              />
-              : <FilterSettings
-                imageUrl={croppedImageUrl || ''}
-                onFilterChange={handleFilterChange}
-              />
-        )}
-      </div>
+  const handleObjectSelect = (itemData: any) => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    const target = canvas.getObjects().find(obj => {
+      return obj.id === itemData.id;
+    });
+    if (target) {
+      canvas.discardActiveObject();
+      canvas.setActiveObject(target);
+      canvas.bringToFront(target);
+      canvas.renderAll();
+    }
+  };
 
-      {/* Image Editor */}
-      <div className="relative flex h-5/6 justify-center items-center border bg-white">
-        {
-          viewMode === 1
-            ? <div className="flex w-full h-full justify-center items-center">
-              <canvas
-                ref={canvasRef}
-                style={{
-                  border: "1px solid #fff",
-                  width: 800,
-                  height: 600,
-                }}
+  return (
+    <div className="relative flex h-screen px-10">
+      <div>
+        {/* Toolbar */}
+        <div className="relative flex justify-between items-center border p-4">
+          <div className="flex">
+            <button className="btn btn-ghost btn-sm" title="Open" onClick={handleBgImageFileOpen}>
+              <FolderOpen size={20} />
+            </button>
+          </div>
+          {!isSelectedFinetune
+            ? <div className="flex gap-2">
+              <ZoomToolbarSection
+                imageUrl={imageUrl || ''}
+                viewMode={viewMode}
+                onChange={handleZoomChange}
               />
-            </div>
-            : <div className="flex w-full h-full justify-center items-center" style={{ width: originImageWidth, height: originImageHeight, }}>
-              <Cropper
-                ref={cropperRef}
-                className={'cropper'}
-                src={canvasImageUrl}
-                defaultCoordinates={coordinates}
-                stencilProps={{
-                  grid: true
-                }}
+              <div className="divider divider-horizontal"></div>
+              <AnnotationToolbarSection
+                annotation={annotation}
+                imageUrl={imageUrl || ''}
+                onChangeAnnotation={handleAnnotationClick}
+                onDeleteAnnotation={handleObjectsDelete}
               />
+              <div className="divider divider-horizontal"></div>
+              <div className="flex flex-col justify-center items-center gap-2">
+                <div className="join">
+                  <button className={`btn btn-ghost btn-sm ${isCropWorking ? 'btn-active' : ''}`} title="Crop and Transform" disabled={!imageUrl} onClick={handleImageCropping}>
+                    <CropIcon size={20} />
+                  </button>
+                  <button className="btn btn-ghost btn-sm" title="Finetune" disabled={!imageUrl} onClick={() => { handleFinetuneClick() }}>
+                    <SlidersHorizontal size={20} />
+                  </button>
+                  <button className={`btn btn-ghost btn-sm ${isSelectedFilter ? 'btn-active' : ''}`} title="Filter" disabled={!imageUrl} onClick={() => { handleFilterClick() }}>
+                    <Sparkles size={20} />
+                  </button>
+                </div>
+                <div>Image Format</div>
+              </div>
             </div>
-        }
+            : <FinetuneToolbarSection
+              finetune={finetune}
+              onChangeFinetune={handleFinetuneChange}
+            />
+          }
+          <div className="flex">
+            <button className="btn btn-ghost btn-sm" title="Apply" onClick={showCroppedImage}>
+              <Check size={20} />
+            </button>
+            <button className="btn btn-ghost btn-sm" title="Discard" onClick={handleCancel}>
+              <X size={20} />
+            </button>
+            <button className="btn btn-ghost btn-sm" title="Get Image" onClick={handleGetImage}>
+              <FolderInput size={20} />
+            </button>
+            <button className="btn btn-ghost btn-sm" title="Save" onClick={handleSaveImage}>
+              <Save size={20} />
+            </button>
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            ref={bgImageInputRef}
+            onChange={handleBgImageChange}
+            style={{ display: "none" }}
+          />
+          <input
+            type="file"
+            accept="image/*"
+            ref={addImageInputRef}
+            onChange={handleImageAdd}
+            style={{ display: "none" }}
+          />
+          {(isSelectedFinetune || isSelectedAnnotation < 9 || isSelectedFilter) && (
+            isSelectedFinetune
+              ? <FinetuneSettings
+                finetune={finetune}
+                bgImageFinetune={bgImageFinetune}
+                handleRangeValueChange={handleRangeValueChange}
+              />
+              : !isSelectedFilter
+                ? <ColorAndStrokeSettings
+                  color={color}
+                  width={strokeWidth}
+                  bgColor={bgColor}
+                  onColorChange={handleColorChange}
+                  onWidthChange={handleWidthChange}
+                  onBgColorChange={handleBgColorChange}
+                />
+                : <FilterSettings
+                  imageUrl={croppedImageUrl || ''}
+                  onFilterChange={handleFilterChange}
+                />
+          )}
+        </div>
+
+        {/* Image Editor */}
+        <div className="relative flex h-5/6 justify-center items-center border bg-white">
+          {
+            viewMode === 1
+              ? <div className="flex w-full h-full justify-center items-center">
+                <canvas
+                  ref={canvasRef}
+                  style={{
+                    border: "1px solid #fff",
+                    width: 800,
+                    height: 600,
+                  }}
+                />
+              </div>
+              : <div className="flex w-full h-full justify-center items-center" style={{ width: originImageWidth, height: originImageHeight, }}>
+                <Cropper
+                  ref={cropperRef}
+                  className={'cropper'}
+                  src={canvasImageUrl}
+                  defaultCoordinates={coordinates}
+                  stencilProps={{
+                    grid: true
+                  }}
+                />
+              </div>
+          }
+        </div>
       </div>
+      <AnnotationsTable data={objectData} onObjectSelect={handleObjectSelect} />
     </div>
   );
 };

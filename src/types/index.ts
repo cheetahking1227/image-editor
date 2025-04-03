@@ -92,3 +92,22 @@ export type SaveImageType = {
   data: fabric.Object[];
   coordinate: Coordinates | undefined;
 }
+
+export type AnnotationsTableDataType = {
+  id: string | undefined;
+  type: string | undefined;
+  text: any;
+  coordinates: {
+    left: number;
+    top: number;
+    width: number | undefined;
+    height: number | undefined;
+  } | {};
+  fill: any;
+  stroke: string | undefined;
+}
+
+export type AnnotationsTableDataProps = {
+  data: AnnotationsTableDataType[];
+  onObjectSelect: (itemData: any) => void;
+}
