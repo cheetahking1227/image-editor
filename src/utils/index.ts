@@ -566,17 +566,17 @@ export const extractObjectData = (obj: fabric.Object, isUpdated: boolean = false
     let maxX = Math.max(obj.aCoords?.bl.x!, obj.aCoords?.br.x!, obj.aCoords?.tl.x!, obj.aCoords?.tr.x!);
     let maxY = Math.max(obj.aCoords?.bl.y!, obj.aCoords?.br.y!, obj.aCoords?.tl.y!, obj.aCoords?.tr.y!);
     coordinates = {
-      left: minX,
-      top: minY,
-      width: maxX - minX,
-      height: maxY - minY,
+      left: Math.round(minX * 10) / 10,
+      top: Math.round(minY * 10) / 10,
+      width: Math.round((maxX - minX) * 10) / 10,
+      height: Math.round((maxY - minY) * 10) / 10,
     };
   } else {
     coordinates = {
-      left: obj.left,
-      top: obj.top,
-      width: obj.width,
-      height: obj.height,
+      left: Math.round(obj.left * 10) / 10,
+      top: Math.round(obj.top * 10) / 10,
+      width: Math.round(obj.width! * 10) / 10,
+      height: Math.round(obj.height! * 10) / 10,
     };
   }
 
