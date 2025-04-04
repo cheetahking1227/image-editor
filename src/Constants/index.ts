@@ -1,3 +1,4 @@
+
 export const BG_IMAGE_FINETUNE = [
   { title: 'Brightness', value: 0, min: 0, max: 100 },
   { title: 'Contrast', value: 0, min: 0, max: 100 },
